@@ -58,13 +58,21 @@ class Train():
 				metrics=self.meta_data.get('metric'),
 				)
 		
+		# Build the model (important for subclassed models)
+		self.model.build(input_shape=(None, len(self.meta_data.get('features'))))
+		self.model.summary()
+		
+		self.train_ds, self.val_ds = self.data_set.split_train_validation(self.x_train, self.y_train, val_fraction=0.2)
+
+		self.x_train = None
+		self.y_train = None
+
 		self.model.fit(
-				self.x_train,
-				self.y_train,
+				self.train_ds,
+				validation_data=self.val_ds,
 				epochs=self.meta_data.get('epochs'),
-				validation_split=0.2,
 				initial_epoch=self.meta_data.get('epoch', 0),
-				callbacks=[self.call_backs]
+				callbacks=self.call_backs
 				)
 		save_path = os.path.join( 
 				self.meta_data.get("model_dir"),  
@@ -89,7 +97,7 @@ class PeriodicCheckpoint(keras.callbacks.Callback):
 if __name__ == "__main__":
 	train = Train(
 		meta_data_path=r'experiments\experiment_1\meta_data.json',
-		data_path="./data/processed/processed_data_subset_2024-12-01--2025-11-30.pkl")
+		data_path=r"data\processed\processed_data_2_2024-12-01--2025-11-30.pkl")
 	train.meta_data.path = r'experiments\experiment_1\meta_data.json'
 	train.create_network()
 	train.create_dataset()

@@ -392,6 +392,9 @@ class DeepDataset(AuroraDatasetLoader):
 			data = _unsupervised
 
 		self.meta_data['total_samples'] = len(data)
+		#TODO remove this hardcoding
+		if 'Day_Night' in data.columns:
+			data = data[data['Day_Night'] == 1]
 
 		# Remove unused columns
 		data = data[self.features + [self.time_column]]
@@ -437,10 +440,28 @@ class DeepDataset(AuroraDatasetLoader):
 				test_df_norm = test_df_norm[self.meta_data['features']]
 
 			X_train = self.df_to_tf_dataset(data=train_df_norm, shuffle=True, batch_size=self.meta_data['batch_size'])
-			X_test = self.df_to_tf_dataset(data=test_df_norm, shuffle=False)
+			X_test = self.df_to_tf_dataset(data=test_df_norm, shuffle=False, batch_size=self.meta_data['batch_size'])
 			return X_train, X_test
 
-	
+
+	def split_train_validation(self, x_train, y_train, val_fraction=0.2, shuffle=True):
+
+		dataset = tf.data.Dataset.zip((x_train, y_train))
+
+		# Count samples
+		total = sum(1 for _ in dataset)
+		val_size = int(val_fraction * total)
+		train_size = total - val_size
+
+		if shuffle:
+				dataset = dataset.shuffle(buffer_size=total, reshuffle_each_iteration=False)
+
+		train_ds = dataset.take(train_size)
+		val_ds   = dataset.skip(train_size)
+
+		return train_ds, val_ds
+
+
 	def sanity_check_tf_dataset(self, dataset, name="Dataset", num_batches=None, mean_limit=0.2, std_limit=0.2, features = 8):
 		"""
 		Perform a sanity check on a TensorFlow dataset.
