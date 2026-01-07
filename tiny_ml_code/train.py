@@ -1,7 +1,11 @@
 import os
-from code.models.FC_autoencoder import ModelBuilder
-from code.data_loader import DictManager, DeepDataset
+from tiny_ml_code.models.FC_autoencoder import ModelBuilder
+from tiny_ml_code.data_handler import DictManager
+from tiny_ml_code.data_handler import DeepDataset
 from tensorflow import keras
+import time
+import json
+import numpy as np
 
 class Train():
 	def __init__(self, meta_data_path, data_path="./data/processed/processed_data_subset_2024-12-01--2025-11-30.pkl", ) -> None:
@@ -25,9 +29,8 @@ class Train():
 				width_layer_2 = self.meta_data.get('width_layer_2'),
 				activation = self.meta_data.get('activation'),
 				features = len(self.meta_data.get('features')),
-				laten_size = self.meta_data.get('laten_size'),
+				latent_size = self.meta_data.get('latent_size'),
 				model_type = self.meta_data.get('model_type'),
-				name = self.meta_data.get('model_name')
 			)
 		
 	def create_dataset(self,):
@@ -39,7 +42,7 @@ class Train():
 
 	def create_callbacks(self, patience):
 
-		early_stopping_cb = keras.callbacks.EarlyStopping(patience=patience, restore_best=True)
+		early_stopping_cb = keras.callbacks.EarlyStopping(patience=patience, restore_best_weights=True)
 		self.call_backs.append(early_stopping_cb)
 
 		periodic_checkpoint = PeriodicCheckpoint(
@@ -49,8 +52,36 @@ class Train():
 		)
 		self.call_backs.append(periodic_checkpoint)
 
-	def train(
-			self):
+		self.call_backs.append(self.tensorboard_callback)
+
+	def tensorboard_callback(self):
+		# Root folder for logs
+		root_logdir = os.path.join(os.curdir, "my_logs")
+
+		def get_run_logdir():
+			# Create a timestamped subfolder
+			run_id = time.strftime("run_%Y_%m_%d-%H_%M_%S")
+			run_dir = os.path.join(root_logdir, run_id)
+			
+			# Make sure the folder exists
+			os.makedirs(run_dir, exist_ok=True)
+			
+			return run_dir
+
+		run_logdir = get_run_logdir()
+		print("Log directory:", run_logdir)
+
+		tensorboard_cb = keras.callbacks.TensorBoard(run_logdir)
+
+		return tensorboard_cb
+
+
+	def create_optimizer(self):
+
+		if self.meta_data.get('optimizer') == 'adam':
+			return keras.optimizers.Adam(learning_rate = self.meta_data.get('learning_rate', 0.001))
+
+	def train(self):
 
 		self.model.compile(
 				optimizer=self.meta_data.get('optimizer'),
@@ -67,7 +98,11 @@ class Train():
 		self.x_train = None
 		self.y_train = None
 
-		self.model.fit(
+		# Validatation of input_shape
+		for x_batch, y_batch in self.train_ds.take(1):
+			print(x_batch.shape, y_batch.shape)
+
+		history = self.model.fit(
 				self.train_ds,
 				validation_data=self.val_ds,
 				epochs=self.meta_data.get('epochs'),
@@ -78,8 +113,34 @@ class Train():
 				self.meta_data.get("model_dir"),  
 				f"{self.meta_data.get("model_name")}_final.weights.h5"
 				)
-		self.model.save_weights(save_path)
 		
+		self.model.save_weights(save_path)
+
+		history_path = os.path.join(self.meta_data.get('model_dir'), 'history.json')
+		with open(history_path, 'w') as f:
+			json.dump(history.history, f)
+
+		# Test model
+		loss, metric = self.model.evaluate(self.x_test, self.y_test)
+		self.meta_data['loss'] = loss
+		self.meta_data['metric_value'] = metric
+
+		# Prediction
+		if self.meta_data.get('model_type') == 'autoencoder':
+			latent_space = self.model.encoder(self.x_test).numpy()
+			latent_path = os.path.join(self.meta_data.get('model_dir'), 'latent_space.npy')
+			np.save(latent_path, latent_space)
+
+		# Reconstruct test set
+		reconstructed = self.model(self.x_test).numpy()
+		recon_path  = os.path.join(self.meta_data.get('model_dir'), 'reconstructed_examples_10.npy')
+		np.save(recon_path, reconstructed[:10])
+		# Original test set
+		original_test_set = self.y_test[:10]
+		original_test_set_path  = os.path.join(self.meta_data.get('model_dir'), 'original_examples_10.npy')
+		np.save(original_test_set_path, original_test_set)
+
+
 class PeriodicCheckpoint(keras.callbacks.Callback):
 	def __init__(self, save_dir, every_n_epochs=10, prefix="model"):
 		super().__init()
