@@ -1,4 +1,6 @@
 import os
+import argparse
+
 from tiny_ml_code.models.FC_autoencoder import ModelBuilder
 from tiny_ml_code.data_handler import DictManager
 from tiny_ml_code.data_set_loader import DeepDataset
@@ -157,13 +159,42 @@ class PeriodicCheckpoint(keras.callbacks.Callback):
 			print(f"\n✅ Saved weights to {path}")
 
 if __name__ == "__main__":
-	train = Train(
-		meta_data_path=r'experiments\experiment_1\meta_data.json',
-		data_path=r"data\processed\processed_data_2_2024-12-01--2025-11-30.pkl")
-	train.meta_data.path = r'experiments\experiment_1\meta_data.json'
-	train.create_network()
-	train.create_dataset()
-	train.train()
-	plotting = Plotting(meta_data_path=r'experiments\experiment_1\meta_data.json')
-	plotting.plot_examples()
 
+    parser = argparse.ArgumentParser(description="Train autoencoder and plot results")
+
+    parser.add_argument(
+        "--meta_data_path",
+        type=str,
+        default=r"experiments/experiment_1/meta_data.json", 
+        help="Path to meta_data JSON file"
+    )
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        default=r"data/processed/processed_data_2_2024-12-01--2025-11-30.pkl", 
+        help="Path to processed dataset"
+    )
+    parser.add_argument(
+        "--model_dir",
+        type=str,
+        default=r"experiments/experiment_1", 
+        help="Directory to save model weights and outputs"
+    )
+
+    args = parser.parse_args()
+
+    os.makedirs(os.path.dirname(args.meta_data_path), exist_ok=True)
+    os.makedirs(args.model_dir, exist_ok=True)
+
+    train = Train(
+        meta_data_path=args.meta_data_path,
+        data_path=args.data_path
+    )
+    train.meta_data.path = args.meta_data_path 
+
+    train.create_network()
+    train.create_dataset()
+    train.train()
+
+    plotting = Plotting(meta_data_path=args.meta_data_path)
+    plotting.plot_examples()
