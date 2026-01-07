@@ -1,7 +1,8 @@
 import os
 from tiny_ml_code.models.FC_autoencoder import ModelBuilder
 from tiny_ml_code.data_handler import DictManager
-from tiny_ml_code.data_handler import DeepDataset
+from tiny_ml_code.data_set_loader import DeepDataset
+from tiny_ml_code.plotting import Plotting
 from tensorflow import keras
 import time
 import json
@@ -163,4 +164,6 @@ if __name__ == "__main__":
 	train.create_network()
 	train.create_dataset()
 	train.train()
+	plotting = Plotting(meta_data_path=r'experiments\experiment_1\meta_data.json')
+	plotting.plot_examples()
 

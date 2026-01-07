@@ -11,7 +11,7 @@ class Plotting():
 		self.meta_data = DictManager(path=meta_data_path)
 		self.path = self.meta_data.get('model_dir', '')
 
-	def history_plot(self, font_size=11, figsize=(3.35,2.2)):
+	def history_plot(self, font_size=11, figsize=(8,5)):
 
 		plt.rcParams.update({
 			"font.size": font_size,
@@ -36,7 +36,14 @@ class Plotting():
 		ax.set_xlabel('Epochs')
 		ax.grid()
 		ax.legend()
+
+		save_dir = os.path.join(self.path, "plots")
+		os.makedirs(save_dir, exist_ok=True)
+
+		save_plot_path = os.path.join(save_dir, "training_history.png")
+		fig.savefig(save_plot_path)
 		plt.show()
+
 
 	def plot_examples(self, font_size=11, figsize=(16,8)):
 
@@ -55,8 +62,7 @@ class Plotting():
 		original_path = os.path.join(self.path, 'original_examples_10.npy')
 		original_data = np.load(original_path)
 
-		print(recon_data.shape)
-		print(original_data.shape)
+
 		features = self.meta_data.get('features')
 		residuals = recon_data - original_data
 
@@ -70,11 +76,20 @@ class Plotting():
 		plt.tight_layout()
 		ax.grid()
 		ax.legend()
+
+
+		save_dir = os.path.join(self.path, "plots")
+		os.makedirs(save_dir, exist_ok=True)
+
+		save_plot_path = os.path.join(save_dir, "example_residulas.png")
+		fig.savefig(save_plot_path)
 		plt.show()
+
 
 
 
 if __name__ == '__main__':
 	plotting = Plotting(meta_data_path=r'experiments\experiment_1\meta_data.json')
 	plotting.plot_examples()
+	plotting.history_plot()
 
