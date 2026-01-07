@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 
 class Encoder(keras.Model):
-	def __init__(self, width_layer_1=20, width_layer_2=10, activation='relu', input_size=8, output_size=2, ):
+	def __init__(self, width_layer_1=64, width_layer_2=32, activation='relu', input_size=8, output_size=2, ):
 		super().__init__()
 
 		self.input_size = input_size
@@ -35,7 +35,7 @@ class Encoder(keras.Model):
 		return latent
 	
 class Decoder(keras.Model):
-	def __init__(self, width_layer_1=20, width_layer_2=10, activation='relu', input_size=2, output_size=8, ):
+	def __init__(self, width_layer_1=64, width_layer_2=32, activation='relu', input_size=2, output_size=8, ):
 		super().__init__()
 
 		self.input_size = input_size

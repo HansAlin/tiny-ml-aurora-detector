@@ -36,13 +36,11 @@ class Train():
 				model_type = self.meta_data.get('model_type'),
 			)
 		
-	def create_dataset(self,):
-		if self.meta_data.get('model_type') == 'autoencoder':
-			self.x_train, self.x_test = self.data_set.prepare_tf_datasets(supervised=False, normalize=True)
-			self.y_train, self.y_test = self.x_train, self.x_test
-		else:
-			self.x_train, self.x_test, self.y_train, self.y_test = self.data_set.prepare_tf_datasets(supervised=True, normalize=True)
-
+	def create_dataset(self):
+		self.train_ds, self.val_ds, self.test_ds = self.data_set.prepare_tf_datasets(
+				supervised_learning=(self.meta_data.get('model_type') != 'autoencoder'),
+				normalize=True
+			)
 	def create_callbacks(self, patience):
 
 		early_stopping_cb = keras.callbacks.EarlyStopping(patience=patience, restore_best_weights=True)
@@ -55,7 +53,7 @@ class Train():
 		)
 		self.call_backs.append(periodic_checkpoint)
 
-		self.call_backs.append(self.tensorboard_callback)
+		self.call_backs.append(self.tensorboard_callback())
 
 	def tensorboard_callback(self):
 		# Root folder for logs
@@ -86,8 +84,10 @@ class Train():
 
 	def train(self):
 
+		os.makedirs(os.path.dirname(self.meta_data.get('model_dir')), exist_ok=True)
+
 		self.model.compile(
-				optimizer=self.meta_data.get('optimizer'),
+				optimizer=self.create_optimizer(),
 				loss=self.meta_data.get('loss'),
 				metrics=self.meta_data.get('metric'),
 				)
@@ -96,14 +96,13 @@ class Train():
 		self.model.build(input_shape=(None, len(self.meta_data.get('features'))))
 		self.model.summary()
 		
-		self.train_ds, self.val_ds = self.data_set.split_train_validation(self.x_train, self.y_train, val_fraction=0.2)
+		for batch in self.train_ds.take(1):
+			if isinstance(batch, tuple):
+				x_batch, y_batch = batch
+				print(x_batch.shape, y_batch.shape)
+			else:
+				print(batch.shape)
 
-		self.x_train = None
-		self.y_train = None
-
-		# Validatation of input_shape
-		for x_batch, y_batch in self.train_ds.take(1):
-			print(x_batch.shape, y_batch.shape)
 
 		history = self.model.fit(
 				self.train_ds,
@@ -120,28 +119,45 @@ class Train():
 		self.model.save_weights(save_path)
 
 		history_path = os.path.join(self.meta_data.get('model_dir'), 'history.json')
+	
 		with open(history_path, 'w') as f:
 			json.dump(history.history, f)
 
 		# Test model
-		loss, metric = self.model.evaluate(self.x_test, self.y_test)
+		last_epoch = history.epoch[-1] + 1
+		self.meta_data['last_epoch'] = last_epoch
+		loss, metric = self.model.evaluate(self.test_ds)
 		self.meta_data['loss'] = loss
 		self.meta_data['metric_value'] = metric
 
-		# Prediction
+		# Prediction latent space
 		if self.meta_data.get('model_type') == 'autoencoder':
-			latent_space = self.model.encoder(self.x_test).numpy()
+			# Only take the inputs from the dataset
+			latent_space = self.model.encoder.predict(
+				self.test_ds.map(lambda x, y: x)
+			)
+
 			latent_path = os.path.join(self.meta_data.get('model_dir'), 'latent_space.npy')
 			np.save(latent_path, latent_space)
 
 		# Reconstruct test set
-		reconstructed = self.model(self.x_test).numpy()
-		recon_path  = os.path.join(self.meta_data.get('model_dir'), 'reconstructed_examples_10.npy')
-		np.save(recon_path, reconstructed[:10])
-		# Original test set
-		original_test_set = self.y_test[:10]
-		original_test_set_path  = os.path.join(self.meta_data.get('model_dir'), 'original_examples_10.npy')
-		np.save(original_test_set_path, original_test_set)
+		reconstructed = self.model.predict(self.test_ds)
+		originals = np.concatenate(
+				[x for x, _ in self.test_ds.as_numpy_iterator()],
+				axis=0
+			)
+
+		np.save(
+			os.path.join(self.meta_data.get('model_dir'), 'reconstructed_examples.npy'),
+			reconstructed
+		)
+
+		np.save(
+			os.path.join(self.meta_data.get('model_dir'), 'original_examples.npy'),
+			originals
+		)
+
+
 
 
 class PeriodicCheckpoint(keras.callbacks.Callback):
@@ -160,41 +176,43 @@ class PeriodicCheckpoint(keras.callbacks.Callback):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description="Train autoencoder and plot results")
+	parser = argparse.ArgumentParser(description="Train autoencoder and plot results")
 
-    parser.add_argument(
-        "--meta_data_path",
-        type=str,
-        default=r"experiments/experiment_1/meta_data.json", 
-        help="Path to meta_data JSON file"
-    )
-    parser.add_argument(
-        "--data_path",
-        type=str,
-        default=r"data/processed/processed_data_2_2024-12-01--2025-11-30.pkl", 
-        help="Path to processed dataset"
-    )
-    parser.add_argument(
-        "--model_dir",
-        type=str,
-        default=r"experiments/experiment_1", 
-        help="Directory to save model weights and outputs"
-    )
+	parser.add_argument(
+		"--meta_data_path",
+		type=str,
+		default=r"experiments/experiment_1/meta_data.json", 
+		help="Path to meta_data JSON file"
+	)
+	parser.add_argument(
+		"--data_path",
+		type=str,
+		default=r"data/processed/processed_data_subset_2024-12-01--2025-11-30.pkl", 
+		help="Path to processed dataset"
+	)
+	parser.add_argument(
+		"--model_dir",
+		type=str,
+		default=r"experiments/experiment_1", 
+		help="Directory to save model weights and outputs"
+	)
 
-    args = parser.parse_args()
+	args = parser.parse_args()
 
-    os.makedirs(os.path.dirname(args.meta_data_path), exist_ok=True)
-    os.makedirs(args.model_dir, exist_ok=True)
+	os.makedirs(os.path.dirname(args.meta_data_path), exist_ok=True)
+	os.makedirs(args.model_dir, exist_ok=True)
 
-    train = Train(
-        meta_data_path=args.meta_data_path,
-        data_path=args.data_path
-    )
-    train.meta_data.path = args.meta_data_path 
+	train = Train(
+		meta_data_path=args.meta_data_path,
+		data_path=args.data_path
+	)
+	train.meta_data.path = args.meta_data_path 
 
-    train.create_network()
-    train.create_dataset()
-    train.train()
+	train.create_network()
+	train.create_dataset()
+	train.train()
 
-    plotting = Plotting(meta_data_path=args.meta_data_path)
-    plotting.plot_examples()
+	plotting = Plotting(meta_data_path=args.meta_data_path)
+	plotting.plot_examples()
+	plotting.history_plot()
+	plotting.plot_latent()

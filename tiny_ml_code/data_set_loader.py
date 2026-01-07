@@ -9,7 +9,6 @@ import tensorflow as tf
 
 class DeepDataset(AuroraDatasetLoader):
 
-	import tensorflow as tf
 
 	def __init__(self, *args, data_path='./data/processed/processed_data_subset_2024-12-01--2025-11-30.pkl', meta_data_path='experiments/experiment_1/meta_data.json',meta_data=None, **kwargs):
 
@@ -129,16 +128,17 @@ class DeepDataset(AuroraDatasetLoader):
 		dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 		return dataset
 
-	def prepare_tf_datasets(self, supervised=False, normalize=True):
+	def prepare_tf_datasets(self, supervised_learning=False, normalize=True, val_fraction=0.1, test_fraction=0.1,):
+
 		data = self.load_processed_data(filename=self.data_path, filetype="pkl")
-		_unsupervised, _supervised = self.split_to_unsupervised_data(data=data)
-		if supervised:
-			_unsupervised = None
-			data = _supervised
-			raise NotImplementedError("Supervised data preparation not implemented yet.")
+
+		unsupervised_df, supervised_df = self.split_to_unsupervised_data(data=data)
+
+		if supervised_learning:
+			data = supervised_df.copy()
 		else:
-			supervised = None
-			data = _unsupervised
+			data = unsupervised_df.copy()
+
 
 		self.meta_data['total_samples'] = len(data)
 
@@ -149,44 +149,61 @@ class DeepDataset(AuroraDatasetLoader):
 		# Keep only features + time column
 		data = data[self.features + [self.time_column]]
 
-		# Split into train/test
-		train_df, test_df = train_test_split(data, test_size=0.2, random_state=42, shuffle=True)
+		# Split into train/val/test
+		train_val_df,  test_df = train_test_split(data, test_size=test_fraction, random_state=42, shuffle=False)
+		train_df, val_df = train_test_split(data, test_size=val_fraction / (1 - test_fraction), random_state=42, shuffle=True)
 
 		# Save timestamps
 		self.timestamps = test_df[self.time_column]
 
 		# Drop time column for model input
 		train_df = train_df.drop(columns=[self.time_column])
+		val_df  = val_df.drop(columns=[self.time_column])
 		test_df  = test_df.drop(columns=[self.time_column])
+
 
 		# Normalize
 		if normalize:
-			train_df_norm = self.normalize_data(data=train_df)
-			test_df_norm  = self.normalize_data(data=test_df, use_predefined_values=True)
+			train_df = self.normalize_data(data=train_df)
+			val_df   = self.normalize_data(val_df, use_predefined_values=True)
+			test_df  = self.normalize_data(test_df, use_predefined_values=True)
 
-		# ----------------------------
-		# Keep raw arrays for later predictions / latent-space
-		# ----------------------------
-		#x_train_array = train_df_norm[self.meta_data['features']].values.astype('float32')
-		x_test_array  = test_df_norm[self.meta_data['features']].values.astype('float32')
 
-		# ----------------------------
-		# Create tf.data.Dataset for training
-		# ----------------------------
-		X_train_ds = self.df_to_tf_dataset(train_df_norm[self.meta_data['features']], 
-										shuffle=True, batch_size=self.meta_data['batch_size'])
-		# X_test_ds  = self.df_to_tf_dataset(test_df_norm[self.meta_data['features']], 
-		# 								shuffle=False, batch_size=self.meta_data['batch_size'])
+		def make_ds(X, y=None, shuffle=False):
+			if y is None:
+				ds = tf.data.Dataset.from_tensor_slices((X, X))
+			else:
+				ds = tf.data.Dataset.from_tensor_slices((X, y))
+			if shuffle:
+				ds = ds.shuffle(len(X))
+			return ds.batch(self.meta_data['batch_size']).prefetch(tf.data.AUTOTUNE)
+		
+		if supervised_learning:
+			X_train = train_df.drop(columns=['label']).values.astype('float32')
+			y_train = train_df['label'].values.astype('float32')
 
-		if supervised:
-			# Handle supervised case if needed
-			y_train_df = train_df_norm.pop('label')
-			y_test_df  = test_df_norm.pop('label')
-			Y_train_ds = self.df_to_tf_dataset(y_train_df, shuffle=True, batch_size=self.meta_data['batch_size'])
-			Y_test_array  = y_test_df.values.astype('float32')
-			return X_train_ds, Y_train_ds, x_test_array, Y_test_array
+			X_val = val_df.drop(columns=['label']).values.astype('float32')
+			y_val = val_df['label'].values.astype('float32')
+
+			X_test = test_df.drop(columns=['label']).values.astype('float32')
+			y_test = test_df['label'].values.astype('float32')
+
+			return (
+				make_ds(X_train, y_train, shuffle=True),
+				make_ds(X_val, y_val),
+				make_ds(X_test, y_test),
+			)
+
 		else:
-			return X_train_ds,  x_test_array
+			X_train = train_df.values.astype('float32')
+			X_val   = val_df.values.astype('float32')
+			X_test  = test_df.values.astype('float32')
+
+			return (
+				make_ds(X_train, shuffle=True),
+				make_ds(X_val),
+				make_ds(X_test),
+			)
 
 
 
