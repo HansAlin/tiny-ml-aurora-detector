@@ -1,7 +1,8 @@
 import os
 import argparse
 from pathlib import Path
-import sys
+import sys		
+from collections import Counter
 
 from tiny_ml_code.models.FC_autoencoder import ModelBuilder
 from tiny_ml_code.data_handler import DictManager
@@ -27,22 +28,49 @@ class Train():
 		self.y_train = None
 		self.y_test = None
 
-	def create_network(self):
+	def create_network(self, meta_data):
 
-		self.model = self.mb.build_model(
-				width_layer_1 = self.meta_data.get('width_layer_1'),
-				width_layer_2 = self.meta_data.get('width_layer_2'),
-				activation = self.meta_data.get('activation'),
-				features = len(self.meta_data.get('features')),
-				latent_size = self.meta_data.get('latent_size'),
-				model_type = self.meta_data.get('model_type'),
+		model = self.mb.build_model(
+				width_layer_1 = meta_data.get('width_layer_1', 64),
+				width_layer_2 = meta_data.get('width_layer_2', 32),
+				activation =    meta_data.get('activation', 'relu'),
+				features =  len(meta_data.get('features', [])),
+				latent_size =   meta_data.get('latent_size', 2),
+				model_type =    meta_data.get('model_type', 'autoencoder'),
+				width_layer_last=meta_data.get('width_layer_last', 10),
+				output_size = meta_data.get('output_size', 1)
 			)
 		
+		return model
+
+	def compute_class_counts(self, dataset):
+		counter = Counter()
+		for _, y in dataset:
+			y_np = y.numpy().ravel()
+			counter.update(y_np)
+		return counter
+
+
+	def compute_class_weights(self, class_counts):
+		total = sum(class_counts.values())
+		num_classes = len(class_counts)
+		return {
+			cls: total / (num_classes * count)
+			for cls, count in class_counts.items()
+		}
+
+
 	def create_dataset(self):
 		self.train_ds, self.val_ds, self.test_ds = self.data_set.prepare_tf_datasets(
 				supervised_learning=(self.meta_data.get('model_type') != 'autoencoder'),
 				normalize=True
 			)
+		if self.meta_data.get('model_type') == 'classifier':
+			class_counts = self.compute_class_counts(self.train_ds)
+			self.class_weight = self.compute_class_weights(class_counts)
+		else:
+			self.class_weight = None
+		
 	def create_callbacks(self, patience):
 
 		early_stopping_cb = keras.callbacks.EarlyStopping(patience=patience, restore_best_weights=True)
@@ -96,6 +124,7 @@ class Train():
 			if response.lower() != 'y':
 				sys.exit("Aborted to avoid overwriting files.")
 
+		self.model = self.create_network(self.meta_data)
 
 		self.model.compile(
 				optimizer=self.create_optimizer(),
@@ -106,6 +135,16 @@ class Train():
 		# Build the model (important for subclassed models)
 		self.model.build(input_shape=(None, len(self.meta_data.get('features'))))
 		
+		if self.meta_data.get("load_weights", None) is not None:
+			pretrained_meta_data = DictManager(path=self.meta_data.get("model_load_weigths"))
+			pretrained_model = self.create_network(pretrained_meta_data)
+			pretrained_model.build( input_shape=(None, len(pretrained_meta_data.get('features'))))
+			pretrained_model.load_weights(self.meta_data.get("load_weights"))
+
+			for src, tgt in zip(pretrained_model.encoder.layers,self.model.encoder.layers):
+				tgt.set_weights(src.get_weights())
+				tgt.trainable = False
+
 		for batch in self.train_ds.take(1):
 			if isinstance(batch, tuple):
 				x_batch, y_batch = batch
@@ -118,9 +157,35 @@ class Train():
 				self.train_ds,
 				validation_data=self.val_ds,
 				epochs=self.meta_data.get('epochs'),
-				initial_epoch=self.meta_data.get('epoch', 0),
-				callbacks=self.call_backs
+				initial_epoch=self.meta_data.get('last_epoch', 0),
+				callbacks=self.call_backs,
+				class_weight=self.class_weight
 				)
+
+		last_epoch = history.epoch[-1] + 1
+
+		# If EncoderClassifier with pretrained weights
+		if self.meta_data.get("load_weights", None) is not None:
+			for layer in self.model.encoder.layers:
+				layer.trainable = True
+
+			self.model.compile(
+					optimizer=keras.optimizers.Adam(1e-4),  # smaller lr
+					loss=self.meta_data.get('loss'),
+					metrics=self.meta_data.get('metric')
+				)
+
+			history = self.model.fit(
+				self.train_ds,
+				validation_data=self.val_ds,
+				epochs=self.meta_data.get('epochs') + last_epoch,
+				initial_epoch=last_epoch,
+				callbacks=self.call_backs,
+				class_weight=self.class_weight
+				)
+			
+			last_epoch = history.epoch[-1] + 1
+
 		save_path = os.path.join( 
 				self.meta_data.get("model_dir"),  
 				f"{self.meta_data.get("model_name")}_final.weights.h5"
@@ -134,7 +199,6 @@ class Train():
 			json.dump(history.history, f)
 
 		# Test model
-		last_epoch = history.epoch[-1] + 1
 		print(last_epoch)
 		self.meta_data['last_epoch'] = last_epoch
 		loss, metric = self.model.evaluate(self.test_ds)
@@ -154,7 +218,7 @@ class Train():
 		# Reconstruct test set
 		reconstructed = self.model.predict(self.test_ds)
 		originals = np.concatenate(
-				[x for x, _ in self.test_ds.as_numpy_iterator()],
+				[y for _, y in self.test_ds.as_numpy_iterator()],
 				axis=0
 			)
 
@@ -194,19 +258,19 @@ if __name__ == "__main__":
 	parser.add_argument(
 		"--meta_data_path",
 		type=str,
-		default=r"experiments/experiment_1/meta_data.json", 
+		default=r"experiments/experiment_2/meta_data.json", 
 		help="Path to meta_data JSON file"
 	)
 	parser.add_argument(
 		"--data_path",
 		type=str,
-		default=r"data/processed/processed_data_subset_2024-12-01--2025-11-30.pkl", 
+		default=r"data/processed/processed_data_2_2024-12-01--2025-11-30.pkl", 
 		help="Path to processed dataset"
 	)
 	parser.add_argument(
 		"--model_dir",
 		type=str,
-		default=r"experiments/experiment_1", 
+		default=r"experiments/experiment_2", 
 		help="Directory to save model weights and outputs"
 	)
 
@@ -221,11 +285,9 @@ if __name__ == "__main__":
 	)
 	train.meta_data.path = args.meta_data_path 
 
-	train.create_network()
 	train.create_dataset()
 	train.train()
 
 	plotting = Plotting(meta_data_path=args.meta_data_path)
-	plotting.plot_examples()
-	plotting.history_plot()
-	plotting.plot_latent()
+	plotting.plot_results()
+

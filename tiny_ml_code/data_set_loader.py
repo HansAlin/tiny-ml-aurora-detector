@@ -146,12 +146,19 @@ class DeepDataset(AuroraDatasetLoader):
 		if 'Day_Night' in data.columns:
 			data = data[data['Day_Night'] == 1]
 
-		# Keep only features + time column
-		data = data[self.features + [self.time_column]]
+		# Keep only features + time column + label (if supervised)
+		if supervised_learning:
+			data = data[self.features + [self.time_column, 'label']]
+		else:
+			data = data[self.features + [self.time_column]]
 
 		# Split into train/val/test
 		train_val_df,  test_df = train_test_split(data, test_size=test_fraction, random_state=42, shuffle=False)
-		train_df, val_df = train_test_split(data, test_size=val_fraction / (1 - test_fraction), random_state=42, shuffle=True)
+		train_df, val_df = train_test_split(train_val_df, test_size=val_fraction / (1 - test_fraction), random_state=42, shuffle=True)
+		print(f"Training size: {len(train_df)/len(data)*100:.0f}%")
+		print(f"Validation size: {len(val_df)/len(data)*100:.0f}%")
+		print(f"Training size: {len(test_df)/len(data)*100:.0f}%")
+
 
 		# Save timestamps
 		self.timestamps = test_df[self.time_column]

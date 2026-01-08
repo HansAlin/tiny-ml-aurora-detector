@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import os
 import json
 import numpy as np
@@ -10,6 +11,58 @@ class Plotting():
 
 		self.meta_data = DictManager(path=meta_data_path)
 		self.path = self.meta_data.get('model_dir', '')
+
+	def plot_results(self):
+		model_type = self.meta_data.get("model_type")
+
+		if model_type == "autoencoder":
+			self.plot_examples()
+			plotting.plot_latent()
+		else:
+			self.plot_confusion_matrix()
+
+		self.history_plot()
+
+
+	def plot_confusion_matrix(self, normalize=True, labels = ["No Aurora", "Aurora"], font_size=11, figsize=(8,5)):
+
+		
+		plt.rcParams.update({
+			"font.size": font_size,
+			"axes.titlesize": font_size,
+			"axes.labelsize": font_size,
+			"legend.fontsize": font_size,
+			"xtick.labelsize": font_size,
+			"ytick.labelsize": font_size,
+		})
+
+		pred_path = os.path.join(self.path, 'reconstructed_examples.npy')
+		pred_data = np.load(pred_path)
+		pred_data = (pred_data >= 0.5).astype(int)
+
+		original_path = os.path.join(self.path, 'original_examples.npy')
+		original_data = np.load(original_path)
+
+		
+
+		cm = confusion_matrix(
+			original_data,
+			pred_data,
+			normalize="true" if normalize else None
+		)
+
+		fig, ax = plt.subplots(figsize=figsize)
+		disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
+		disp.plot(ax=ax, cmap="Blues", values_format=".2f" if normalize else "d")
+
+		ax.set_title("Confusion Matrix")
+
+		save_dir = os.path.join(self.path, "plots")
+		os.makedirs(save_dir, exist_ok=True)
+
+		save_path = os.path.join(save_dir, "confusion_matrix.png")
+		fig.savefig(save_path)
+		plt.close()
 
 	def history_plot(self, font_size=11, figsize=(8,5)):
 
@@ -72,7 +125,7 @@ class Plotting():
 		})
 
 		recon_path = os.path.join(self.path, 'reconstructed_examples.npy')
-		recon_data = np.load(recon_path)[:nr_examples]
+		recon_data = np.load(recon_path)
 
 		original_path = os.path.join(self.path, 'original_examples.npy')
 		original_data = np.load(original_path)
@@ -104,8 +157,7 @@ class Plotting():
 		fig.suptitle('Residual Distribution per Feature')
 
 		plt.tight_layout()
-		ax.grid()
-		ax.legend()
+
 		save_dir = os.path.join(self.path, "plots")
 		os.makedirs(save_dir, exist_ok=True)
 
@@ -132,7 +184,6 @@ class Plotting():
 		ax.set_title('Latent space')
 		plt.tight_layout()
 		ax.grid()
-		ax.legend()
 
 
 		save_dir = os.path.join(self.path, "plots")
@@ -147,7 +198,6 @@ class Plotting():
 
 
 if __name__ == '__main__':
-	plotting = Plotting(meta_data_path=r'experiments\experiment_1\meta_data.json')
-	plotting.plot_examples()
-	plotting.history_plot()
+	plotting = Plotting(meta_data_path=r'experiments\experiment_2\meta_data.json')
+	plotting.plot_results()
 
