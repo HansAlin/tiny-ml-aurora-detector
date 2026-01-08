@@ -1,5 +1,7 @@
 import os
 import argparse
+from pathlib import Path
+import sys
 
 from tiny_ml_code.models.FC_autoencoder import ModelBuilder
 from tiny_ml_code.data_handler import DictManager
@@ -86,6 +88,15 @@ class Train():
 
 		os.makedirs(os.path.dirname(self.meta_data.get('model_dir')), exist_ok=True)
 
+		# Check for overwriting 
+		experiment_dir = Path(os.path.dirname(self.meta_data.get('model_dir')))
+
+		if self.meta_data.get('loss_value', None) is None or any(experiment_dir.glob("*.h5")):
+			response = input("Model seems to have been trained allready! Continue and overwrite? [Y/N]: ")
+			if response.lower() != 'y':
+				sys.exit("Aborted to avoid overwriting files.")
+
+
 		self.model.compile(
 				optimizer=self.create_optimizer(),
 				loss=self.meta_data.get('loss'),
@@ -94,7 +105,6 @@ class Train():
 		
 		# Build the model (important for subclassed models)
 		self.model.build(input_shape=(None, len(self.meta_data.get('features'))))
-		self.model.summary()
 		
 		for batch in self.train_ds.take(1):
 			if isinstance(batch, tuple):
@@ -125,9 +135,10 @@ class Train():
 
 		# Test model
 		last_epoch = history.epoch[-1] + 1
+		print(last_epoch)
 		self.meta_data['last_epoch'] = last_epoch
 		loss, metric = self.model.evaluate(self.test_ds)
-		self.meta_data['loss'] = loss
+		self.meta_data['loss_value'] = loss
 		self.meta_data['metric_value'] = metric
 
 		# Prediction latent space
@@ -156,6 +167,8 @@ class Train():
 			os.path.join(self.meta_data.get('model_dir'), 'original_examples.npy'),
 			originals
 		)
+
+		self.meta_data.save_dict()
 
 
 

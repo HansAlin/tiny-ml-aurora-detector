@@ -28,14 +28,30 @@ class Plotting():
 			self.history = json.load(f)
 
 		fig, ax = plt.subplots(1,1, figsize=figsize)
+		twin_ax = ax.twinx()
+		twin_label = None
 
 		for key in self.history.keys():
 
-			ax.plot(self.history[key], label=key.replace('_', ' '))
+			label = key.replace('_', ' ')
+
+			if 'loss' in key:
+				ax.plot(self.history[key], label=label)
+			else:
+				twin_ax.plot(self.history[key], label=label, linestyle='--')
+
+				if twin_label is None:
+					twin_label = key.split('_')[-1].capitalize()
+
+		ax.set_ylabel('Loss')
+		twin_ax.set_ylabel(twin_label)
 		ax.set_title('Training and validation values')	
 		ax.set_xlabel('Epochs')
 		ax.grid()
-		ax.legend()
+		# Get labels in same box
+		lines_1, labels_1 = ax.get_legend_handles_labels()
+		lines_2, labels_2 = twin_ax.get_legend_handles_labels()
+		ax.legend( lines_1 + lines_2, labels_1 +labels_2, loc='best')
 
 		save_dir = os.path.join(self.path, "plots")
 		os.makedirs(save_dir, exist_ok=True)
@@ -43,7 +59,6 @@ class Plotting():
 		save_plot_path = os.path.join(save_dir, "training_history.png")
 		fig.savefig(save_plot_path)
 		plt.close()
-
 
 	def plot_examples(self, font_size=11, figsize=(16,8), nr_examples=10 ):
 
@@ -60,20 +75,34 @@ class Plotting():
 		recon_data = np.load(recon_path)[:nr_examples]
 
 		original_path = os.path.join(self.path, 'original_examples.npy')
-		original_data = np.load(original_path)[:nr_examples]
+		original_data = np.load(original_path)
 
 
 		features = self.meta_data.get('features')
 		residuals = recon_data - original_data
 
-		fig, ax = plt.subplots(1,1, figsize=figsize)
+		n_features = len(features)
 
-		for i, residual in enumerate(residuals):
-			ax.step(range(len(residual)), residual, where='mid', label=f'Example {i+1}')
+		n_cols = int(np.ceil(np.sqrt(n_features))) + 1
+		n_rows = int(np.ceil(np.sqrt(n_features / n_cols)))
+
+
+		fig, axes = plt.subplots(n_rows, n_cols, figsize=( 3 * n_cols, 3 * n_rows), sharex=False, sharey=False)
+
+		axes = axes.flatten()
+
+		for i, feature in enumerate(features):
+			ax = axes[i]
+			ax.hist( residuals[:, i], bins=50, )
+			ax.set_title(feature)
+			ax.axvline(0, linestyle="--", linewidth=1)
 		
-		ax.set_title('Examples')	
-		ax.set_xticks(range(len(features)))
-		ax.set_xticklabels(features, rotation=45, ha='right')  # rotate if too long
+		if len(axes) > n_features:
+			for ax in axes[n_features:]:
+				ax.remove()
+
+		fig.suptitle('Residual Distribution per Feature')
+
 		plt.tight_layout()
 		ax.grid()
 		ax.legend()
@@ -99,7 +128,7 @@ class Plotting():
 		latent_data = np.load(latent_path)[:,:2]
 
 		fig, ax = plt.subplots(1,1, figsize=figsize)
-		ax.scatter(latent_data[:,0], latent_data[:,0])
+		ax.scatter(latent_data[:,0], latent_data[:,1])
 		ax.set_title('Latent space')
 		plt.tight_layout()
 		ax.grid()
