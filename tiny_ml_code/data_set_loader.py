@@ -1,4 +1,5 @@
 
+from typing import Any
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,16 +22,22 @@ class DeepDataset(AuroraDatasetLoader):
 		self.unsupervised = None
 		self.data_path = data_path
 
-		if meta_data is None:
+		if meta_data is None and meta_data_path is not None:
 			self.meta_data =  DictManager(meta_data_path)
-		else:
+			self.features = self.meta_data.get('features')
+		elif meta_data is not None:
 			self.meta_data = meta_data
+			self.features = self.meta_data.get('features')
+		else:
+			self.meta_data = None
 		
-		self.features = self.meta_data.get('features')
+
 
 		self.columns_not_to_normalize = [self.time_column, 'label', 'Day_Night']
 		self.timestamps = pd.Series(dtype='datetime64[ns]')
 
+	def __setattr__(self, __name: str, __value: Any) -> None:
+		return super().__setattr__(__name, __value)
 
 	def load_processed_data(self, filename="processed_data", filetype="pkl"):
 		self.data_name = filename
@@ -128,7 +135,7 @@ class DeepDataset(AuroraDatasetLoader):
 		dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
 		return dataset
 
-	def prepare_tf_datasets(self, supervised_learning=False, normalize=True, val_fraction=0.1, test_fraction=0.1,):
+	def prepare_tf_datasets(self, supervised_learning=False, normalize=True, val_fraction=0.1, test_fraction=0.1, return_numpy=False):
 
 		data = self.load_processed_data(filename=self.data_path, filetype="pkl")
 
@@ -195,6 +202,13 @@ class DeepDataset(AuroraDatasetLoader):
 			X_test = test_df.drop(columns=['label']).values.astype('float32')
 			y_test = test_df['label'].values.astype('float32')
 
+			if return_numpy:
+				return {
+					"train": (X_train, y_train),
+					"val":   (X_val, y_val),
+					"test":  (X_test, y_test),
+				}
+
 			return (
 				make_ds(X_train, y_train, shuffle=True),
 				make_ds(X_val, y_val),
@@ -206,12 +220,40 @@ class DeepDataset(AuroraDatasetLoader):
 			X_val   = val_df.values.astype('float32')
 			X_test  = test_df.values.astype('float32')
 
+			if return_numpy:
+				return {
+					"train": X_train,
+					"val":   X_val,
+					"test":  X_test,
+				}
 			return (
 				make_ds(X_train, shuffle=True),
 				make_ds(X_val),
 				make_ds(X_test),
 			)
+		
+	def save_subset(self, save_subset_path, X, y=None, n_samples=1000):
 
+		if y is None:
+			np.savez(save_subset_path, x=X[:n_samples])
+		else:
+			np.savez(save_subset_path, x=X[:n_samples], y=y[:n_samples])
+
+	def load_subset(self, saved_subset_path):
+		
+		data = np.load(saved_subset_path)
+
+		x = data["x"]
+		y = data["y"] if "y"in data else None
+
+		if y is None:
+			ds = tf.data.Dataset.from_tensor_slices(x)
+			ds = ds.map(lambda X: (X, X))
+		else:
+			ds = tf.data.Dataset.from_tensor_slices((x, y))
+			
+
+		return ds
 
 
 	def split_train_validation(self, x_train, y_train, val_fraction=0.2, shuffle=True):
@@ -287,3 +329,17 @@ class DeepDataset(AuroraDatasetLoader):
 			print("Sanity check failed!")
 			return False
 
+if __name__ == '__main__':
+	dataloader = DeepDataset(
+			data_path=r"data\processed\processed_data_2_2024-12-01--2025-11-30.pkl",
+			meta_data_path=r"experiments\experiment_2\meta_data.json"
+		)
+	save_subset_path = r"data\processed\subset_labeled.npz"
+	# dic = dataloader.prepare_tf_datasets( supervised_learning=False, normalize=True, val_fraction=0.1, test_fraction=0.1, return_numpy=True)
+	# dataloader.save_subset(save_subset_path=save_subset_path, 
+	# 					X=dic['train'][0],
+	# 					y=dic['train'][0],
+	# 					n_samples=500)
+	representative_data = dataloader.load_subset(saved_subset_path=save_subset_path)
+	for x, y in representative_data.take(1):
+		print(x[:3])  # first 3 samples

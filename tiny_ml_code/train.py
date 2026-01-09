@@ -87,12 +87,12 @@ class Train():
 
 	def tensorboard_callback(self):
 		# Root folder for logs
-		root_logdir = os.path.join(os.curdir, "my_logs")
+		logdir = os.path.join(self.meta_data.get('model_dir'), "tensorboard_logs")
 
 		def get_run_logdir():
 			# Create a timestamped subfolder
 			run_id = time.strftime("run_%Y_%m_%d-%H_%M_%S")
-			run_dir = os.path.join(root_logdir, run_id)
+			run_dir = os.path.join(logdir, run_id)
 			
 			# Make sure the folder exists
 			os.makedirs(run_dir, exist_ok=True)
@@ -126,16 +126,24 @@ class Train():
 
 		self.model = self.create_network(self.meta_data)
 
+		if self.meta_data.get('resume_training', None) is not None:
+			if self.meta_data.get("load_weights", None) is not None:
+				self.model.build( input_shape=(None, len(self.meta_data.get('features'))))
+				self.model.load_weights(self.meta_data.get("load_weights"))
+
+
+
 		self.model.compile(
 				optimizer=self.create_optimizer(),
 				loss=self.meta_data.get('loss'),
 				metrics=self.meta_data.get('metric'),
 				)
 		
+		
 		# Build the model (important for subclassed models)
 		self.model.build(input_shape=(None, len(self.meta_data.get('features'))))
 		
-		if self.meta_data.get("load_weights", None) is not None:
+		if self.meta_data.get("load_weights", None) is not None and self.meta_data.get('resume_training', None) is None:
 			pretrained_meta_data = DictManager(path=self.meta_data.get("model_load_weigths"))
 			pretrained_model = self.create_network(pretrained_meta_data)
 			pretrained_model.build( input_shape=(None, len(pretrained_meta_data.get('features'))))
@@ -165,7 +173,7 @@ class Train():
 		last_epoch = history.epoch[-1] + 1
 
 		# If EncoderClassifier with pretrained weights
-		if self.meta_data.get("load_weights", None) is not None:
+		if self.meta_data.get("load_weights", None) is not None and self.meta_data.get('resume_training', None) is None:
 			for layer in self.model.encoder.layers:
 				layer.trainable = True
 
@@ -239,17 +247,18 @@ class Train():
 
 class PeriodicCheckpoint(keras.callbacks.Callback):
 	def __init__(self, save_dir, every_n_epochs=10, prefix="model"):
-		super().__init()
+		super().__init__()
 		self.save_dir = save_dir
 		self.every_n_epochs = every_n_epochs
 		self.prefix = prefix
-		os.makedirs(save_dir, exist_ok=True)
+		self.epoch_model_dir = save_dir + "/model_weights/"
+		os.makedirs(self.epoch_model_dir, exist_ok=True)
 
 	def on_epoch_end(self, epoch, logs=None):
 		if (epoch +1) % self.every_n_epochs == 0:
-			path = os.path.join( self.save_dir, f"{self.prefix}_epoch_{epoch + 1}.weights.h5")
+			path = os.path.join(self.epoch_model_dir + f"{self.prefix}.weights.h5")
 			self.model.save_weights(path)
-			print(f"\n✅ Saved weights to {path}")
+			print(f"\n Saved weights to {path}")
 
 if __name__ == "__main__":
 
@@ -258,19 +267,19 @@ if __name__ == "__main__":
 	parser.add_argument(
 		"--meta_data_path",
 		type=str,
-		default=r"experiments/experiment_2/meta_data.json", 
+		default=r"experiments/experiment_1/meta_data.json", 
 		help="Path to meta_data JSON file"
 	)
 	parser.add_argument(
 		"--data_path",
 		type=str,
-		default=r"data/processed/processed_data_2_2024-12-01--2025-11-30.pkl", 
+		default=r"data/processed/processed_data_subset_2024-12-01--2025-11-30.pkl", 
 		help="Path to processed dataset"
 	)
 	parser.add_argument(
 		"--model_dir",
 		type=str,
-		default=r"experiments/experiment_2", 
+		default=r"experiments/experiment_1", 
 		help="Directory to save model weights and outputs"
 	)
 
@@ -286,6 +295,7 @@ if __name__ == "__main__":
 	train.meta_data.path = args.meta_data_path 
 
 	train.create_dataset()
+	train.create_callbacks(patience=10)
 	train.train()
 
 	plotting = Plotting(meta_data_path=args.meta_data_path)

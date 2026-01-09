@@ -17,7 +17,7 @@ class Plotting():
 
 		if model_type == "autoencoder":
 			self.plot_examples()
-			plotting.plot_latent()
+			self.plot_latent()
 		else:
 			self.plot_confusion_matrix()
 
