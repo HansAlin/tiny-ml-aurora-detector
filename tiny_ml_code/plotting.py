@@ -1,32 +1,24 @@
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, roc_curve
 import os
 import json
 import numpy as np
 
 from tiny_ml_code.data_handler import DictManager
+from tiny_ml_code.evaluating import Evaluate 
 
 class Plotting():
-	def __init__(self, meta_data_path, ) -> None:
+	def __init__(self, meta_data_path, show_plots=False) -> None:
 
 		self.meta_data = DictManager(path=meta_data_path)
+		self.evaluate = Evaluate(y_pred=None, y_true=None, meta_data_path=meta_data_path)
 		self.path = self.meta_data.get('model_dir', '')
+		self.show_plots = show_plots
 
-	def plot_results(self):
-		model_type = self.meta_data.get("model_type")
+		self.y_pred = None
+		self.y_true = None
 
-		if model_type == "autoencoder":
-			self.plot_examples()
-			self.plot_latent()
-		else:
-			self.plot_confusion_matrix()
-
-		self.history_plot()
-
-
-	def plot_confusion_matrix(self, normalize=True, labels = ["No Aurora", "Aurora"], font_size=11, figsize=(8,5)):
-
-		
+	def update_font(self, font_size=11):
 		plt.rcParams.update({
 			"font.size": font_size,
 			"axes.titlesize": font_size,
@@ -36,12 +28,32 @@ class Plotting():
 			"ytick.labelsize": font_size,
 		})
 
-		pred_path = os.path.join(self.path, 'reconstructed_examples.npy')
-		pred_data = np.load(pred_path)
-		pred_data = (pred_data >= 0.5).astype(int)
+	def plot_results(self):
+		model_type = self.meta_data.get("model_type")
 
-		original_path = os.path.join(self.path, 'original_examples.npy')
-		original_data = np.load(original_path)
+		if model_type == "autoencoder":
+			self.plot_examples()
+			self.plot_latent()
+		else:
+			self.plot_confusion_matrix()
+			self.plot_roc_curve()
+
+		self.history_plot()
+
+
+	def plot_confusion_matrix(self, normalize=True, labels = ["No Aurora", "Aurora"], font_size=11, figsize=(8,5), pred_data=None, original_data=None, threshold=0.5):
+
+		self.update_font(font_size=font_size)
+
+		if pred_data is None:
+			pred_path = os.path.join(self.path, 'reconstructed_examples.npy')
+			pred_data = np.load(pred_path)
+
+		pred_data = (pred_data >= threshold).astype(int)
+
+		if original_data is None:
+			original_path = os.path.join(self.path, 'original_examples.npy')
+			original_data = np.load(original_path)
 
 		
 
@@ -62,18 +74,13 @@ class Plotting():
 
 		save_path = os.path.join(save_dir, "confusion_matrix.png")
 		fig.savefig(save_path)
+		if self.show_plots:
+			plt.show()
 		plt.close()
 
 	def history_plot(self, font_size=11, figsize=(8,5)):
 
-		plt.rcParams.update({
-			"font.size": font_size,
-			"axes.titlesize": font_size,
-			"axes.labelsize": font_size,
-			"legend.fontsize": font_size,
-			"xtick.labelsize": font_size,
-			"ytick.labelsize": font_size,
-		})
+		self.update_font(font_size=font_size)
 
 		history_path = os.path.join(self.path, 'history.json')
 
@@ -111,28 +118,19 @@ class Plotting():
 
 		save_plot_path = os.path.join(save_dir, "training_history.png")
 		fig.savefig(save_plot_path)
+		if self.show_plots:
+			plt.show()
 		plt.close()
 
-	def plot_examples(self, font_size=11, figsize=(16,8), nr_examples=10 ):
+	def plot_examples(self, font_size=11):
 
-		plt.rcParams.update({
-			"font.size": font_size,
-			"axes.titlesize": font_size,
-			"axes.labelsize": font_size,
-			"legend.fontsize": font_size,
-			"xtick.labelsize": font_size,
-			"ytick.labelsize": font_size,
-		})
+		self.update_font(font_size=font_size)
 
-		recon_path = os.path.join(self.path, 'reconstructed_examples.npy')
-		recon_data = np.load(recon_path)
-
-		original_path = os.path.join(self.path, 'original_examples.npy')
-		original_data = np.load(original_path)
+		y_pred, y_true = self._load_predictions(None, None)
 
 
 		features = self.meta_data.get('features')
-		residuals = recon_data - original_data
+		residuals = y_pred - y_true
 
 		n_features = len(features)
 
@@ -163,18 +161,13 @@ class Plotting():
 
 		save_plot_path = os.path.join(save_dir, "example_residuals.png")
 		fig.savefig(save_plot_path)
+		if self.show_plots:
+			plt.show()
 		plt.close()
 
 	def plot_latent(self, font_size=11, figsize=(16,8)):
 
-		plt.rcParams.update({
-			"font.size": font_size,
-			"axes.titlesize": font_size,
-			"axes.labelsize": font_size,
-			"legend.fontsize": font_size,
-			"xtick.labelsize": font_size,
-			"ytick.labelsize": font_size,
-		})
+		self.update_font(font_size=font_size)
 
 		latent_path = os.path.join(self.path, 'latent_space.npy')
 		latent_data = np.load(latent_path)[:,:2]
@@ -191,13 +184,71 @@ class Plotting():
 
 		save_plot_path = os.path.join(save_dir, "latent_space.png")
 		fig.savefig(save_plot_path)
+		if self.show_plots:
+			plt.show()
 		plt.close()
 
+	def plot_roc_curve(self, font_size=11, figsize=(8,5), fpr=None, tpr=None, fpr_threshold=1e-5):
+		
+		self.update_font(font_size=font_size)
+		
+		fig, ax = plt.subplots(figsize=figsize)
+
+		if (fpr or tpr) is None:
+			y_pred, y_true = self._load_predictions(None, None)
+
+			fpr, tpr, thresholds = roc_curve(y_true, y_pred)
+
+		roc_auc, tpr_at_fpr, fpr_threshold, cut, real_fpr_value = self.evaluate.get_cut(fpr=fpr, tpr=tpr, thresholds=thresholds, fpr_threshold=fpr_threshold)
+
+		ax.plot(fpr, tpr)
+
+		ax.set_title(
+			f"ROC-curve\n"
+			rf"With $\mathrm{{FPR}} < 10^{{{int(np.log10(fpr_threshold))}}}$, cut = {cut:.2f}"
+			f"\n"
+			rf"Gives TPR: {tpr_at_fpr:.2f}"
+		)
+		ax.set_xlabel("False Positive Rate")
+		ax.set_ylabel("True Positive Rate")
+		ax.set_xscale('log')
+		ax.legend()
+		plt.grid()
+
+		save_dir = os.path.join(self.path, "plots")
+		os.makedirs(save_dir, exist_ok=True)
+
+		save_path = os.path.join(save_dir, "roc_curve.png")
+		fig.savefig(save_path)
+		if self.show_plots:
+			plt.show()
+		plt.close()
+		
+	def _load_predictions(self, y_pred=None, y_true=None):
+		"""
+		Lazy loader for predictions and labels.
+		Explicit arguments override cached values.
+		"""
+
+		if y_pred is not None:
+			self.y_pred = y_pred
+
+		if y_true is not None:
+			self.y_true = y_true
+
+		if self.y_pred is None:
+			pred_path = os.path.join(self.path, 'reconstructed_examples.npy')
+			self.y_pred = np.load(pred_path)
+
+		if self.y_true is None:
+			true_path = os.path.join(self.path, 'original_examples.npy')
+			self.y_true = np.load(true_path)
+
+		return self.y_pred, self.y_true
 
 
-
+ 
 
 if __name__ == '__main__':
-	plotting = Plotting(meta_data_path=r'experiments\experiment_2\meta_data.json')
+	plotting = Plotting(meta_data_path=r'experiments\experiment_2\meta_data.json', show_plots=True)
 	plotting.plot_results()
-

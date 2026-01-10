@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from tiny_ml_code.data_handler import AuroraDatasetLoader, DictManager
 
 import tensorflow as tf
+from collections import Counter
 
 class DeepDataset(AuroraDatasetLoader):
 
@@ -232,6 +233,23 @@ class DeepDataset(AuroraDatasetLoader):
 				make_ds(X_test),
 			)
 		
+	def compute_class_counts(self, dataset):
+		counter = Counter()
+		for _, y in dataset:
+			y_np = y.numpy().ravel()
+			counter.update(y_np)
+		return counter
+
+	def compute_class_weights(self, class_counts):
+		total = sum(class_counts.values())
+		num_classes = len(class_counts)
+		weights = {
+					int(cls) : int(total / (num_classes * count) * 100)
+					for cls, count in class_counts.items()
+				}
+		print(weights)
+		return weights
+
 	def save_subset(self, save_subset_path, X, y=None, n_samples=1000):
 
 		if y is None:

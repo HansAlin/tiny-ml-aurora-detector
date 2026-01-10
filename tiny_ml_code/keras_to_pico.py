@@ -1,7 +1,9 @@
 import tensorflow as tf
 from tiny_ml_code.data_set_loader import DeepDataset, DictManager
 from tiny_ml_code.models.FC_autoencoder import ModelBuilder
+from tiny_ml_code.plotting import Plotting
 import numpy as np
+
 
 class Converter():
 	def __init__(self, meta_data_path=None, data_path=None) -> None:
@@ -23,13 +25,62 @@ class Converter():
 
 		self.dataloader.__setattr__('data_path', data_path)
 
-		self.dataloader.prepare_tf_datasets(
-			supervised_learning=True,
-			normalize=True,
-			val_fraction=0.1,
-			test_fraction=0.1,
-			return_numpy=True
-		)
+		data_set = self.dataloader.prepare_tf_datasets(
+					supervised_learning=True,
+					normalize=True,
+					val_fraction=0.1,
+					test_fraction=0.1,
+					return_numpy=True
+				)
+
+		x_test, y_test = data_set["test"]
+
+		return x_test, y_test 
+
+	def get_interpretter(self, tflite_model_quant):
+		self.interpreter = tf.lite.Interpreter(model_content=tflite_model_quant)
+		self.interpreter.allocate_tensors()
+
+		return self.interpreter
+
+
+	def test_lite_model(self, data_path, interpreter=None):
+
+		if interpreter is None:
+			interpreter = self.interpreter
+
+
+		X, Y = self.get_test_data(data_path=data_path)
+
+		input_details = interpreter.get_input_details()
+		output_details = interpreter.get_output_details()
+
+		input_scale, input_zero_point = input_details[0]["quantization"]
+		output_scale, output_zero_point = output_details[0]["quantization"]
+
+
+		# Quantize float32 -> int8
+		X_int8 = (X / input_scale + input_zero_point).astype(np.int8)
+
+		y_pred_float_32 = []
+
+		for i in range(len(X_int8)):
+			# Set input
+			interpreter.set_tensor(input_details[0]['index'], X_int8[i:i+1])
+			
+			# Run inference
+			interpreter.invoke()
+			
+			# Get output and dequantize
+			output_data = interpreter.get_tensor(output_details[0]['index'])
+			y_pred = (output_data.astype(np.float32) - output_zero_point) * output_scale
+			y_pred_float_32.append(y_pred[0])
+			
+		y_pred = np.array(y_pred_float_32).flatten()
+
+		return y_pred, Y
+
+
 
 
 
@@ -76,14 +127,10 @@ class Converter():
 if __name__ == "__main__":
 
 	converter = Converter(meta_data_path="experiments/experiment_2/meta_data.json")
+	plotting = Plotting()
 
 	tflite_model_quant = converter.get_converted_model(weights_path="experiments/experiment_2/encoder_classifier_final.weights.h5")
-	interpreter = tf.lite.Interpreter(model_content=tflite_model_quant)
-	interpreter.allocate_tensors()
+	converter.get_interpretter(tflite_model_quant)
+	ypred, y =converter.test_lite_model(data_path=converter.dataloader.meta_data.get("data_name"))
+	print(ypred,y)
 
-	input_details = interpreter.get_input_details()
-	output_details = interpreter.get_output_details()
-
-	scale, zero_point = input_details[0]["quantization"]
-
-	print(scale, zero_point)

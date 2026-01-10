@@ -2,12 +2,14 @@ import os
 import argparse
 from pathlib import Path
 import sys		
-from collections import Counter
+
 
 from tiny_ml_code.models.FC_autoencoder import ModelBuilder
 from tiny_ml_code.data_handler import DictManager
 from tiny_ml_code.data_set_loader import DeepDataset
 from tiny_ml_code.plotting import Plotting
+from tiny_ml_code.evaluating import Evaluate 
+
 from tensorflow import keras
 import time
 import json
@@ -43,21 +45,6 @@ class Train():
 		
 		return model
 
-	def compute_class_counts(self, dataset):
-		counter = Counter()
-		for _, y in dataset:
-			y_np = y.numpy().ravel()
-			counter.update(y_np)
-		return counter
-
-
-	def compute_class_weights(self, class_counts):
-		total = sum(class_counts.values())
-		num_classes = len(class_counts)
-		return {
-			cls: total / (num_classes * count)
-			for cls, count in class_counts.items()
-		}
 
 
 	def create_dataset(self):
@@ -66,8 +53,9 @@ class Train():
 				normalize=True
 			)
 		if self.meta_data.get('model_type') == 'classifier':
-			class_counts = self.compute_class_counts(self.train_ds)
-			self.class_weight = self.compute_class_weights(class_counts)
+			class_counts = self.data_set.compute_class_counts(self.train_ds)
+			self.class_weight = self.data_set.compute_class_weights(class_counts)
+
 		else:
 			self.class_weight = None
 		
@@ -119,17 +107,17 @@ class Train():
 		# Check for overwriting 
 		experiment_dir = Path(os.path.dirname(self.meta_data.get('model_dir')))
 
-		if self.meta_data.get('loss_value', None) is None or any(experiment_dir.glob("*.h5")):
+		if self.meta_data.get('loss_value', None) is not None or any(experiment_dir.glob("*.h5")):
 			response = input("Model seems to have been trained allready! Continue and overwrite? [Y/N]: ")
 			if response.lower() != 'y':
 				sys.exit("Aborted to avoid overwriting files.")
 
 		self.model = self.create_network(self.meta_data)
 
-		if self.meta_data.get('resume_training', None) is not None:
+		if self.meta_data.get('resume_training', False) is not False:
 			if self.meta_data.get("load_weights", None) is not None:
 				self.model.build( input_shape=(None, len(self.meta_data.get('features'))))
-				self.model.load_weights(self.meta_data.get("load_weights"))
+				
 
 
 
@@ -143,8 +131,8 @@ class Train():
 		# Build the model (important for subclassed models)
 		self.model.build(input_shape=(None, len(self.meta_data.get('features'))))
 		
-		if self.meta_data.get("load_weights", None) is not None and self.meta_data.get('resume_training', None) is None:
-			pretrained_meta_data = DictManager(path=self.meta_data.get("model_load_weigths"))
+		if self.meta_data.get("load_weights", None) is not None and self.meta_data.get('resume_training', False) is False:
+			pretrained_meta_data = DictManager(path=self.meta_data.get("model_load_weigths_meta_data"))
 			pretrained_model = self.create_network(pretrained_meta_data)
 			pretrained_model.build( input_shape=(None, len(pretrained_meta_data.get('features'))))
 			pretrained_model.load_weights(self.meta_data.get("load_weights"))
@@ -161,11 +149,14 @@ class Train():
 				print(batch.shape)
 
 
+		initial_epoch = int(self.meta_data.get('last_epoch') or 0)
+		epochs = int(self.meta_data.get('epochs'))
+
 		history = self.model.fit(
 				self.train_ds,
 				validation_data=self.val_ds,
-				epochs=self.meta_data.get('epochs'),
-				initial_epoch=self.meta_data.get('last_epoch', 0),
+				epochs=epochs,
+				initial_epoch=initial_epoch,
 				callbacks=self.call_backs,
 				class_weight=self.class_weight
 				)
@@ -263,41 +254,40 @@ class PeriodicCheckpoint(keras.callbacks.Callback):
 if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser(description="Train autoencoder and plot results")
-
-	parser.add_argument(
-		"--meta_data_path",
-		type=str,
-		default=r"experiments/experiment_1/meta_data.json", 
-		help="Path to meta_data JSON file"
-	)
 	parser.add_argument(
 		"--data_path",
 		type=str,
-		default=r"data/processed/processed_data_subset_2024-12-01--2025-11-30.pkl", 
+		default=r"data/processed/processed_data_2_2024-12-01--2025-11-30.pkl", 
 		help="Path to processed dataset"
 	)
 	parser.add_argument(
 		"--model_dir",
 		type=str,
-		default=r"experiments/experiment_1", 
+		default=r"experiments/classifier_experiment_1", 
 		help="Directory to save model weights and outputs"
 	)
 
 	args = parser.parse_args()
 
-	os.makedirs(os.path.dirname(args.meta_data_path), exist_ok=True)
+	meta_data_path = args.model_dir + '/meta_data.json'
+
+	os.makedirs(os.path.dirname(meta_data_path), exist_ok=True)
 	os.makedirs(args.model_dir, exist_ok=True)
 
+
+
 	train = Train(
-		meta_data_path=args.meta_data_path,
+		meta_data_path=meta_data_path,
 		data_path=args.data_path
 	)
-	train.meta_data.path = args.meta_data_path 
 
 	train.create_dataset()
 	train.create_callbacks(patience=10)
 	train.train()
 
-	plotting = Plotting(meta_data_path=args.meta_data_path)
+	evaluator = Evaluate(y_pred=None, y_true=None, meta_data_path=meta_data_path)
+	evaluator.collect_metrics(fpr_threshold=1e-5)
+
+	plotting = Plotting(meta_data_path=meta_data_path)
 	plotting.plot_results()
 

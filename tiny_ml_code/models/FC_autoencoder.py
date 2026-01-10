@@ -180,7 +180,7 @@ class ModelBuilder():
 			model = decoder_model
 		elif model_type == 'autoencoder':
 			model = Autoencoder(width_layer_1=width_layer_1, width_layer_2=width_layer_2, activation=activation, latent_size=latent_size, features=features, )
-		elif model_type == 'encoder_classifier':
+		elif model_type == 'classifier':
 			model = EncoderClassifier(width_layer_1=width_layer_1, width_layer_2=width_layer_2, width_layer_last=width_layer_last, activation=activation, features=8, latent_size=latent_size, output_size=output_size)
 		else:
 			raise ValueError(f"Unknown model type: {model_type}")
@@ -193,6 +193,6 @@ class ModelBuilder():
 	
 if __name__ == '__main__':
 	builder = ModelBuilder()
-	model = builder.build_model(model_type='encoder_classifier')
+	model = builder.build_model(model_type='classifier')
 
 		
