@@ -33,7 +33,8 @@ class Evaluate():
 
 
 	def roc(self,):
-
+		print(self.y_true.shape())
+		print(self.y_pred.shape())
 		fpr, tpr, thresholds = roc_curve(self.y_true, self.y_pred)
 
 		return fpr, tpr, thresholds
