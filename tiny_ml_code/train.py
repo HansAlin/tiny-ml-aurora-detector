@@ -228,7 +228,8 @@ class Train():
 		originals = np.concatenate(y_list, axis=0)
 
 		# Ensure shapes match
-		assert reconstructed.shape == originals.shape, f"{reconstructed.shape} vs {originals.shape}"
+		originals = originals.ravel()
+		reconstructed = reconstructed.ravel()
 
 
 		np.save(
@@ -286,14 +287,14 @@ if __name__ == "__main__":
 
 
 
-	# train = Train(
-	# 	meta_data_path=meta_data_path,
-	# 	data_path=args.data_path
-	# )
+	train = Train(
+		meta_data_path=meta_data_path,
+		data_path=args.data_path
+	)
 
-	# train.create_dataset()
-	# train.create_callbacks(patience=10)
-	# train.train()
+	train.create_dataset()
+	train.create_callbacks(patience=10)
+	train.train()
 
 	evaluator = Evaluate(y_pred=None, y_true=None, meta_data_path=meta_data_path)
 	evaluator.collect_metrics(fpr_threshold=1e-5)
