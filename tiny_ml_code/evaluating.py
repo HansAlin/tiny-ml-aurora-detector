@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_score, recall_score, f1_score
-
+import matplotlib.pyplot as plt
 from tiny_ml_code.data_handler import DictManager
 
 class Evaluate():
@@ -33,8 +33,12 @@ class Evaluate():
 
 
 	def roc(self,):
-		print(self.y_true.shape())
-		print(self.y_pred.shape())
+		
+		print(self.y_true.shape)
+		print(self.y_pred.shape)
+		print(np.unique(self.y_true, return_counts=True))
+
+
 		fpr, tpr, thresholds = roc_curve(self.y_true, self.y_pred)
 
 		return fpr, tpr, thresholds

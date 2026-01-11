@@ -212,7 +212,6 @@ class Plotting():
 		ax.set_xlabel("False Positive Rate")
 		ax.set_ylabel("True Positive Rate")
 		ax.set_xscale('log')
-		ax.legend()
 		plt.grid()
 
 		save_dir = os.path.join(self.path, "plots")
