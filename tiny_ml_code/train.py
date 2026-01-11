@@ -216,10 +216,20 @@ class Train():
 
 		# Reconstruct test set
 		reconstructed = self.model.predict(self.test_ds)
-		originals = np.concatenate(
-				[y for _, y in self.test_ds.as_numpy_iterator()],
-				axis=0
-			)
+
+		# Gather originals
+		y_list = []
+		for batch in self.test_ds.as_numpy_iterator():
+			if isinstance(batch, tuple):
+				x_batch, y_batch = batch
+				y_list.append(y_batch)
+			else:
+				y_list.append(batch)
+		originals = np.concatenate(y_list, axis=0)
+
+		# Ensure shapes match
+		assert reconstructed.shape == originals.shape, f"{reconstructed.shape} vs {originals.shape}"
+
 
 		np.save(
 			os.path.join(self.meta_data.get('model_dir'), 'reconstructed_examples.npy'),
@@ -247,7 +257,7 @@ class PeriodicCheckpoint(keras.callbacks.Callback):
 
 	def on_epoch_end(self, epoch, logs=None):
 		if (epoch +1) % self.every_n_epochs == 0:
-			path = os.path.join(self.epoch_model_dir + f"{self.prefix}.weights.h5")
+			path = os.path.join(self.epoch_model_dir + f"{self.prefix}_epoch_{epoch}.weights.h5")
 			self.model.save_weights(path)
 			print(f"\n Saved weights to {path}")
 
@@ -276,14 +286,14 @@ if __name__ == "__main__":
 
 
 
-	train = Train(
-		meta_data_path=meta_data_path,
-		data_path=args.data_path
-	)
+	# train = Train(
+	# 	meta_data_path=meta_data_path,
+	# 	data_path=args.data_path
+	# )
 
-	train.create_dataset()
-	train.create_callbacks(patience=10)
-	train.train()
+	# train.create_dataset()
+	# train.create_callbacks(patience=10)
+	# train.train()
 
 	evaluator = Evaluate(y_pred=None, y_true=None, meta_data_path=meta_data_path)
 	evaluator.collect_metrics(fpr_threshold=1e-5)

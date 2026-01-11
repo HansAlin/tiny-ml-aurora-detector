@@ -3,6 +3,7 @@ import os
 from typing import Any
 import pandas as pd
 import numpy as np
+import copy
 import matplotlib.pyplot as plt
 import json
 from sklearn.model_selection import train_test_split
@@ -224,8 +225,9 @@ class DictManager:
 		self.path = path
 		os.makedirs(os.path.dirname(path), exist_ok=True)
 		self.data = initial or {}
-		if os.path.exists(path):
-			self.load_dict()
+		if self.data == {}:
+			if os.path.exists(path):
+				self.load_dict()
 
 	def __setattr__(self, name: str, value: Any) -> None:
 		if name == 'path':
@@ -233,13 +235,22 @@ class DictManager:
 
 		super().__setattr__(name, value)
 
+	def copy_dict(self, deep=False):
+		"""Return a copy of the internal dict."""
+		if deep:
+			return copy.deepcopy(self.data)
+		return self.data.copy()
+
+
 	def load_dict(self):
 		"""Load dict from JSON file."""
 		with open(self.path, 'r') as f:
 			self.data = json.load(f)
 
-	def save_dict(self):
+	def save_dict(self, path=None):
 		"""Save dict to JSON file."""
+		if path is not None:
+			self.path = path
 		with open(self.path, 'w') as f:
 			json.dump(self.data, f, indent=4)
 

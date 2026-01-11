@@ -11,10 +11,15 @@ class Evaluate():
 		ROC-values: produce the values for obtaining a ROC-curve
 	"""
 
-	def __init__(self, y_pred : np.array, y_true : np.array, meta_data_path="experiments/experiment_2/meta_data.json") -> None:
+	def __init__(self, y_pred : np.array, y_true : np.array, meta_data_path="experiments/experiment_2/meta_data.json", meta_data=None) -> None:
 		self.y_pred = y_pred
 		self.y_true = y_true
-		self.meta_data = DictManager(path=meta_data_path)
+
+		if meta_data is not None:
+			self.meta_data = meta_data
+		else:
+			self.meta_data = DictManager(path=meta_data_path)
+
 		if y_pred is None:
 			pred_path = os.path.join(self.meta_data.get("model_dir"), 'reconstructed_examples.npy')
 			self.y_pred  = np.load(pred_path)
@@ -22,9 +27,13 @@ class Evaluate():
 			original_path = os.path.join(self.meta_data.get("model_dir"), 'original_examples.npy')
 			self.y_true  = np.load(original_path)
 
+		self.y_pred = self.y_pred.ravel()
+		self.y_true = self.y_true.ravel()
+
 
 
 	def roc(self,):
+
 		fpr, tpr, thresholds = roc_curve(self.y_true, self.y_pred)
 
 		return fpr, tpr, thresholds

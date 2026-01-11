@@ -2,16 +2,26 @@ import tensorflow as tf
 from tiny_ml_code.data_set_loader import DeepDataset, DictManager
 from tiny_ml_code.models.FC_autoencoder import ModelBuilder
 from tiny_ml_code.plotting import Plotting
+from tiny_ml_code.evaluating import Evaluate
 import numpy as np
 
 
 class Converter():
-	def __init__(self, meta_data_path=None, data_path=None) -> None:
-		self.meta_data_path = meta_data_path
-		self.meta_data = DictManager(path=meta_data_path)
+	def __init__(self, original_meta_data_path=None, data_path=None, tiny_ml_meta_data_path=None, tiny_ml_model_name=None) -> None:
+		self.meta_data_original_path = original_meta_data_path
+		self.meta_data_original = DictManager(path=original_meta_data_path)
 		self.dataloader = DeepDataset(data_path=data_path,
 									meta_data=None,
-									meta_data_path=self.meta_data_path)
+									meta_data_path=self.meta_data_original_path)
+		meta_data_tiny_ml_dict = self.meta_data_original.copy_dict()
+		self.meta_data_tiny_ml = DictManager(path=tiny_ml_meta_data_path, initial=meta_data_tiny_ml_dict)
+		self.meta_data_tiny_ml['model_dir'] = "tiny_ml_meta_data_path"
+		self.meta_data_tiny_ml['load_weights'] = False
+		self.meta_data_tiny_ml['resume_training'] = False
+		self.meta_data_tiny_ml['model_type'] = 'tiny_ml_classifier'
+		self.meta_data_tiny_ml['model_name'] = tiny_ml_model_name
+		self.meta_data_tiny_ml.path = tiny_ml_meta_data_path + "/meta_data.json"
+
 
 	def get_representative_data(self, save_subset_path="data/processed/subset_unlabeled.npz", number_of_values=200):
 
@@ -126,11 +136,19 @@ class Converter():
 
 if __name__ == "__main__":
 
-	converter = Converter(meta_data_path="experiments/experiment_2/meta_data.json")
-	plotting = Plotting()
+	tiny_ml_path = r"experiments/tiny_ml_classifier_experiment_1"
+	converter = Converter(original_meta_data_path="experiments/experiment_2/meta_data.json",
+					   data_path="data/processed/labeled_data.npz",
+					   tiny_ml_meta_data_path=tiny_ml_path,
+					   tiny_ml_model_name="tiny_ml_classifier")
+	plotting = Plotting(meta_data_path=converter.meta_data_tiny_ml.path)
+	evaluating = Evaluate(None, None, None, meta_data=converter.meta_data_tiny_ml)
 
 	tflite_model_quant = converter.get_converted_model(weights_path="experiments/experiment_2/encoder_classifier_final.weights.h5")
 	converter.get_interpretter(tflite_model_quant)
 	ypred, y =converter.test_lite_model(data_path=converter.dataloader.meta_data.get("data_name"))
 	print(ypred,y)
+	evaluating.collect_metrics(y_pred=ypred, y_true=y, fpr_threshold=1e-5)
+	converter.meta_data_tiny_ml.save_dict(path=tiny_ml_path+"/meta_data.json")
+
 
