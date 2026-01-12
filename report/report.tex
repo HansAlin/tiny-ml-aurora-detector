@@ -13,7 +13,7 @@
 \usepackage[compat=1.1.0]{tikz-feynman}
 \usepackage[backend=biber,style=numeric-comp,]{biblatex}
 \usepackage{a4wide}
-\addbibresource{Machine Learning.bib} %Imports bibliography file
+\addbibresource{Tiny-ML.bib} %Imports bibliography file
 
 \title{Thesis}
 \author{Hans Alin}
@@ -82,7 +82,21 @@ Rolling Mean Temperature (C), Rolling Mean Temperature (C) over 20 minutes.
 Rolling Mean Humidity (\%), Rolling Mean Humidity (\%) over 20 minutes.
 
 \subsection{Labeling strategy}
-From observations 
+From observations between 2024-12-01 and 2025-11-30 there were in total 8 aurora events visible from the deployment location verified by observer over 8 different dates. One verified event with no aurora, eventhogh the algorithm on the microcontroller indicated a high aurora probability, was also observed. \par
+To label the data, a time window sweeping over the data from beginning of considered aurora event to end of event was applied. The time conseiderd was between 2 and 6 hours. The windows was sweeped over the data with in the consederd time at one verified dates and based on visual inspection of the light sensor with filter at 557nm. Most of the data points including a value from 557 nm sensor having a larger value than 3 was considered as aurora event. The threshold value of 3 was chosen based on visual inspection of the data from all verified aurora events. \par
+Addinal labeling was done for the known non-aurora event with the same priciples mentioned previoulsy. \par
+Moreover, 5 dates with high aurora points from the microcontroller algorithm, but not confirmed by obserer, where also consederd. Similar procedure were applied as above, but in order to avoid mislabeling of aurora events, a check of the magentometer located in Kiruna and Lyksele was used to varify the aurora event. Only those events with high magnetometer activity, and aurora points larger than 3 was considerd as aurora event. \par
+
+\subsection{Data summary}
+After filtering out day-time samples and applying the labeling strategy, the final dataset used for training and evaluating the deep-learning models contained approximately 1.8 M samples with unlabeled data and approximately 14,000 labeled samples, where around 13,000 samples were labeled as non-aurora and around 1,000 samples were labeled as aurora. This indicates a significant class imbalance, with non-aurora samples vastly outnumbering aurora samples. \par
+Before training with data a normalization of the data was applyed using the mean and standard deviation caluclated from the training set. The normalization was done using the formula:
+\[ 
+X_{norm} = \frac{X - \mu}{\sigma}	
+\]
+where \(X\) is the original feature value, and \(\mu\) and \(\sigma\) are the mean and standard deviation of the feature in the training set, respectively. 
+
+
+
 
 
 

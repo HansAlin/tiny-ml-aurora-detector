@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
 	evaluating.collect_metrics(y_pred=y_pred, y_true=y_true, fpr_threshold=fpr_threshold)
 	converter.meta_data_tiny_ml.save_dict(path=tiny_ml_path+"/meta_data.json")
-	fpr, tpr, thresholds = evaluating.roc(y_pred=y_pred, y_true=y_true)
+	fpr, tpr, thresholds = evaluating.get_roc(y_pred=y_pred, y_true=y_true)
 
 	
 	plotting.plot_confusion_matrix(y_pred=y_pred, y_true=y_true)

@@ -1,5 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
+from tiny_ml_code.data_set_loader import DictManager
+
 
 class Encoder(keras.Model):
 	def __init__(self, width_layer_1=64, width_layer_2=32, activation='relu', input_size=8, output_size=2, ):
@@ -166,6 +168,25 @@ class ModelBuilder():
 	def __init__(self) -> None:
 		pass
 
+	def wrapper_build_model(self, meta_data, compiled=False):
+
+		VALID_KEYS = ['width_layer_1', 'width_layer_2', 'activation', 'features', 'latent_size', 'model_type', 'width_layer_last', 'output_size']
+		filtered_data = {}
+
+		for key in VALID_KEYS:
+			if key in meta_data.data:
+				if key == 'features':
+					filtered_data[key] = len(meta_data.get(key))
+				else:
+					filtered_data[key] = meta_data.get(key)
+
+		model = self.build_model(**filtered_data)
+
+		if compiled:
+			model.compile(optimizer=keras.optimizers.Adam(), loss=meta_data.get('loss', 'mse'), metrics=meta_data.get('metrics', ['accuracy']))
+		
+		return model
+
 	def build_model(self, width_layer_1=64, width_layer_2=32, activation='relu', features=8, latent_size=2, model_type='autoencoder', width_layer_last=10, output_size=1):
 
 		encoder_model = Encoder(width_layer_1=width_layer_1, width_layer_2=width_layer_2, activation=activation, input_size=features, output_size=latent_size,)
@@ -190,9 +211,54 @@ class ModelBuilder():
 
 
 		return model
+
+	def get_MAC(self, model):
+		"""This method calculates the MAC of the model
+
+		Args:
+			model (keras.Model): The model needs to be compiled
+
+		Returns:
+			mult (int): The number of multiplications
+			add (int): The number of additions
+			mack (int): The number of MACs
+
+		"""
+
+		adds = []
+		mults = []
+
+		for layer in model.layers:
+			if 'encoder' in layer.name or 'classifier' in layer.name or 'decoder' in layer.name:
+				for sub_layer in layer.layers:
+					if isinstance(sub_layer, keras.layers.Dense):
+						kernel = sub_layer.kernel  # tf.Variable
+						input_shape, output_shape = kernel.shape
+
+						mult = input_shape * output_shape
+						mults.append(mult)
+
+						add = (input_shape - 1) * output_shape
+						adds.append(add)
+
+			else:
+				print("Layers not considered for MAC calculation")
+
+		total_mult = sum(mults)
+
+		total_add = sum(adds)
+
+		total_mack = total_mult + total_add
+
+		return total_mult, total_add, total_mack
+
 	
 if __name__ == '__main__':
+	meta_data = DictManager(path=r'experiments\classifier_experiment_2\meta_data.json')
 	builder = ModelBuilder()
-	model = builder.build_model(model_type='classifier')
+
+	model = builder.wrapper_build_model(meta_data=meta_data)
+	mult, add, mack = builder.get_MAC(model)
+	print(f"Mult: {mult}, Add: {add}, MAC: {mack}")
 
 		

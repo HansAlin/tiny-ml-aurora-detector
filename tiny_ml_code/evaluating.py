@@ -3,6 +3,9 @@ import os
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_score, recall_score, f1_score
 import matplotlib.pyplot as plt
 from tiny_ml_code.data_handler import DictManager
+from tiny_ml_code.models.FC_autoencoder import ModelBuilder
+from tensorflow import keras
+
 
 class Evaluate():
 	"""This class takes care of all evaluating of, forexample the output from a Deep-Learning prediction
@@ -13,6 +16,8 @@ class Evaluate():
 
 	def __init__(self, y_pred : np.array, y_true : np.array, meta_data_path="experiments/experiment_2/meta_data.json", meta_data=None) -> None:
 		
+		self.builder = ModelBuilder()
+
 		self.y_pred = y_pred
 		self.y_true = y_true
 
@@ -39,7 +44,7 @@ class Evaluate():
 
 
 
-	def roc(self, y_pred=None, y_true=None):
+	def get_roc(self, y_pred=None, y_true=None):
 		"""This method computes the ROC-curve values
 		It can use the y_pred and y_true provided in the class initialization
 
@@ -80,13 +85,6 @@ class Evaluate():
 		roc_auc = auc(fpr, tpr)
 		tpr_at_fpr = tpr[index_threshold]
 
-		if self.meta_data is not None:
-			self.meta_data['roc_auc'] = roc_auc
-			self.meta_data['tpr_at_fpr'] = tpr_at_fpr
-			self.meta_data['fpr_threshold'] = fpr_threshold
-			self.meta_data['cut_threshold'] = cut
-			self.meta_data['real_fpr_value'] = real_fpr_value
-
 		return roc_auc, tpr_at_fpr, fpr_threshold, cut, real_fpr_value
 
 	def get_metrics(self, cut):
@@ -98,11 +96,6 @@ class Evaluate():
 		f1 = f1_score(self.y_true, y_pred_labels)
 		cm = confusion_matrix(self.y_true, y_pred_labels)
 
-		self.meta_data['precision'] = precision
-		self.meta_data['recall'] = recall
-		self.meta_data['f1_score'] = f1
-		self.meta_data['confusion_matrix'] =  cm.tolist()
-
 		return precision, recall, f1, cm
 	
 	def collect_metrics(self,fpr_threshold=1e-5, y_pred=None, y_true=None):
@@ -110,9 +103,27 @@ class Evaluate():
 			self.y_pred = y_pred
 		if y_true is not None:
 			self.y_true = y_true
-		fpr, tpr, thresholds = self.roc()
+		fpr, tpr, thresholds = self.get_roc()
 		roc_auc, tpr_at_fpr, fpr_threshold, cut, real_fpr_value = self.get_cut(fpr, tpr, thresholds, fpr_threshold=fpr_threshold)
 		precision, recall, f1, cm = self.get_metrics(cut)
+		model = self.builder.wrapper_build_model(meta_data=self.meta_data)
+		mult, add, mack = self.builder.get_MAC(model)
+
+		if self.meta_data is not None:
+			self.meta_data.update('roc_auc', float(roc_auc))
+			self.meta_data.update('tpr_at_fpr', float(tpr_at_fpr))
+			self.meta_data.update('fpr_threshold', float(fpr_threshold))
+			self.meta_data.update('cut_threshold', float(cut))
+			self.meta_data.update('real_fpr_value', float(real_fpr_value))
+			self.meta_data.update('precision', float(precision))
+			self.meta_data.update('recall', float(recall))
+			self.meta_data.update('f1_score', float(f1))
+			self.meta_data.update('confusion_matrix', cm.tolist())
+			self.meta_data.update('multiplications', int(mult))
+			self.meta_data.update('additions', int(add))
+			self.meta_data.update('MACs', int(mack))
+
+
 
 		self.meta_data.save_dict()
 
@@ -125,9 +136,12 @@ class Evaluate():
 			'precision': precision,
 			'recall': recall,
 			'f1_score': f1,
-			'confusion_matrix': cm.tolist()
-		}
+			'confusion_matrix': cm.tolist(),
+			'multiplications': mult,
+			'additions': add,
+			'MACs': mack
 
+		}
 
 
 
@@ -136,8 +150,10 @@ class Evaluate():
 if __name__ == "__main__":
 	from tiny_ml_code.plotting import Plotting
 	evaluator = Evaluate(y_pred=None, y_true=None, meta_data_path="experiments/experiment_2/meta_data.json")
-	metrics = evaluator.collect_metrics(fpr_threshold=1e-5)
-	print(metrics)
+	model_builder = ModelBuilder()
+	model = model_builder.wrapper_build_model(meta_data=evaluator.meta_data)
+	# trainable_count, non_trainable_count, flops = evaluator.get_model_parameters(model=model)
+
 
 
 
