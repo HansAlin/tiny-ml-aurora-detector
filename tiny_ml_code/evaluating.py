@@ -12,32 +12,51 @@ class Evaluate():
 	"""
 
 	def __init__(self, y_pred : np.array, y_true : np.array, meta_data_path="experiments/experiment_2/meta_data.json", meta_data=None) -> None:
+		
 		self.y_pred = y_pred
 		self.y_true = y_true
 
 		if meta_data is not None:
 			self.meta_data = meta_data
-		else:
+		elif meta_data_path is not None:
 			self.meta_data = DictManager(path=meta_data_path)
+		else:
+			self.meta_data = None
 
-		if y_pred is None:
-			pred_path = os.path.join(self.meta_data.get("model_dir"), 'reconstructed_examples.npy')
-			self.y_pred  = np.load(pred_path)
-		if y_true is None:
-			original_path = os.path.join(self.meta_data.get("model_dir"), 'original_examples.npy')
-			self.y_true  = np.load(original_path)
+		try:
+			if y_pred is None and self.meta_data is not None:
+				pred_path = os.path.join(self.meta_data.get("model_dir"), 'reconstructed_examples.npy')
+				self.y_pred  = np.load(pred_path)
+			if y_true is None and self.meta_data is not None:
+				original_path = os.path.join(self.meta_data.get("model_dir"), 'original_examples.npy')
+				self.y_true  = np.load(original_path)
 
-		self.y_pred = self.y_pred.ravel()
-		self.y_true = self.y_true.ravel()
+			if self.y_pred is not None and self.y_true is not None:
+				self.y_pred = self.y_pred.ravel()
+				self.y_true = self.y_true.ravel()
+		except Exception as e:
+			print(f"Could not load y_pred or y_true from meta_data path. Error: {e}")
 
 
 
-	def roc(self,):
-		
-		print(self.y_true.shape)
-		print(self.y_pred.shape)
-		print(np.unique(self.y_true, return_counts=True))
+	def roc(self, y_pred=None, y_true=None):
+		"""This method computes the ROC-curve values
+		It can use the y_pred and y_true provided in the class initialization
 
+		Args:
+			y_pred (np.array, optional): predicted values. Defaults to None.
+			y_true (np.array, optional): true values. Defaults to None.
+
+		Returns:
+			fpr: False Positive Rate
+			tpr: True Positive Rate
+			thresholds: Thresholds used to compute fpr and tpr
+		"""
+		if y_pred is not None:
+			self.y_pred = y_pred
+
+		if y_true is not None:
+			self.y_true = y_true
 
 		fpr, tpr, thresholds = roc_curve(self.y_true, self.y_pred)
 
@@ -61,11 +80,12 @@ class Evaluate():
 		roc_auc = auc(fpr, tpr)
 		tpr_at_fpr = tpr[index_threshold]
 
-		self.meta_data['roc_auc'] = roc_auc
-		self.meta_data['tpr_at_fpr'] = tpr_at_fpr
-		self.meta_data['fpr_threshold'] = fpr_threshold
-		self.meta_data['cut_threshold'] = cut
-		self.meta_data['real_fpr_value'] = real_fpr_value
+		if self.meta_data is not None:
+			self.meta_data['roc_auc'] = roc_auc
+			self.meta_data['tpr_at_fpr'] = tpr_at_fpr
+			self.meta_data['fpr_threshold'] = fpr_threshold
+			self.meta_data['cut_threshold'] = cut
+			self.meta_data['real_fpr_value'] = real_fpr_value
 
 		return roc_auc, tpr_at_fpr, fpr_threshold, cut, real_fpr_value
 
@@ -85,7 +105,11 @@ class Evaluate():
 
 		return precision, recall, f1, cm
 	
-	def collect_metrics(self,fpr_threshold=1e-5):
+	def collect_metrics(self,fpr_threshold=1e-5, y_pred=None, y_true=None):
+		if y_pred is not None:
+			self.y_pred = y_pred
+		if y_true is not None:
+			self.y_true = y_true
 		fpr, tpr, thresholds = self.roc()
 		roc_auc, tpr_at_fpr, fpr_threshold, cut, real_fpr_value = self.get_cut(fpr, tpr, thresholds, fpr_threshold=fpr_threshold)
 		precision, recall, f1, cm = self.get_metrics(cut)

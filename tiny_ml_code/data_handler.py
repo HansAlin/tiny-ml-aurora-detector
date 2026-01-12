@@ -223,11 +223,14 @@ class DictManager:
 
 	def __init__(self, path, initial=None):
 		self.path = path
-		os.makedirs(os.path.dirname(path), exist_ok=True)
 		self.data = initial or {}
-		if self.data == {}:
-			if os.path.exists(path):
-				self.load_dict()
+
+		if path is not None:
+			os.makedirs(os.path.dirname(path), exist_ok=True)
+
+			if self.data == {}:
+				if os.path.exists(path):
+					self.load_dict()
 
 	def __setattr__(self, name: str, value: Any) -> None:
 		if name == 'path':

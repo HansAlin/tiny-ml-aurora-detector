@@ -22,7 +22,7 @@ class Train():
 		self.mb = ModelBuilder()
 		self.call_backs = []
 		self.data_set = DeepDataset(data_path=data_path, 
-								meta_data_path='experiments/experiment_1/meta_data.json',
+								meta_data_path=None,
 								meta_data=self.meta_data
 								)
 		self.x_train = None 
@@ -39,7 +39,7 @@ class Train():
 				features =  len(meta_data.get('features', [])),
 				latent_size =   meta_data.get('latent_size', 2),
 				model_type =    meta_data.get('model_type', 'autoencoder'),
-				width_layer_last=meta_data.get('width_layer_last', 10),
+				width_layer_last=meta_data.get('width_layer_last', 8),
 				output_size = meta_data.get('output_size', 1)
 			)
 		
@@ -228,8 +228,19 @@ class Train():
 		originals = np.concatenate(y_list, axis=0)
 
 		# Ensure shapes match
-		originals = originals.ravel()
-		reconstructed = reconstructed.ravel()
+		def normalize_output_shape(x):
+			x = np.asarray(x)
+
+			if x.ndim == 1:
+				return x
+
+			if x.ndim == 2 and x.shape[1] == 1:
+				return x[:, 0]
+
+			return x
+
+		originals = normalize_output_shape(originals)
+		reconstructed = normalize_output_shape(reconstructed)
 
 
 		np.save(
@@ -274,7 +285,7 @@ if __name__ == "__main__":
 	parser.add_argument(
 		"--model_dir",
 		type=str,
-		default=r"experiments/classifier_experiment_1", 
+		default=r"experiments/experiment_3", 
 		help="Directory to save model weights and outputs"
 	)
 
@@ -292,13 +303,15 @@ if __name__ == "__main__":
 		data_path=args.data_path
 	)
 
-	train.create_dataset()
-	train.create_callbacks(patience=10)
-	train.train()
+	# train.create_dataset()
+	# train.create_callbacks(patience=10)
+	# train.train()
 
-	evaluator = Evaluate(y_pred=None, y_true=None, meta_data_path=meta_data_path)
-	evaluator.collect_metrics(fpr_threshold=1e-5)
+	if train.meta_data.get('model_type') != 'autoencoder':
+		# Evaluate only for autoencoder model!
+		evaluator = Evaluate(y_pred=None, y_true=None, meta_data_path=meta_data_path)
+		evaluator.collect_metrics(fpr_threshold=1e-5)
 
-	plotting = Plotting(meta_data_path=meta_data_path)
-	plotting.plot_results()
+	plotting = Plotting(meta_data_path=None, meta_data=train.meta_data)
+	plotting.plot_results_collection()
 

@@ -8,10 +8,14 @@ from tiny_ml_code.data_handler import DictManager
 from tiny_ml_code.evaluating import Evaluate 
 
 class Plotting():
-	def __init__(self, meta_data_path, show_plots=False) -> None:
+	def __init__(self, meta_data_path, show_plots=False, meta_data=None) -> None:
 
-		self.meta_data = DictManager(path=meta_data_path)
-		self.evaluate = Evaluate(y_pred=None, y_true=None, meta_data_path=meta_data_path)
+		if meta_data is not None:
+			self.meta_data = meta_data
+		else:
+			self.meta_data = DictManager(path=meta_data_path)
+
+		self.evaluate = Evaluate(y_pred=None, y_true=None, meta_data_path=None, meta_data=None)
 		self.path = self.meta_data.get('model_dir', '')
 		self.show_plots = show_plots
 
@@ -28,7 +32,7 @@ class Plotting():
 			"ytick.labelsize": font_size,
 		})
 
-	def plot_results(self):
+	def plot_results_collection(self):
 		model_type = self.meta_data.get("model_type")
 
 		if model_type == "autoencoder":
@@ -41,25 +45,25 @@ class Plotting():
 		self.history_plot()
 
 
-	def plot_confusion_matrix(self, normalize=True, labels = ["No Aurora", "Aurora"], font_size=11, figsize=(8,5), pred_data=None, original_data=None, threshold=0.5):
+	def plot_confusion_matrix(self, normalize=True, labels = ["No Aurora", "Aurora"], font_size=11, figsize=(8,5), y_pred=None, y_true=None, threshold=0.5):
 
 		self.update_font(font_size=font_size)
 
-		if pred_data is None:
+		if y_pred is None:
 			pred_path = os.path.join(self.path, 'reconstructed_examples.npy')
-			pred_data = np.load(pred_path)
+			y_pred = np.load(pred_path)
 
-		pred_data = (pred_data >= threshold).astype(int)
+		y_pred = (y_pred >= threshold).astype(int)
 
-		if original_data is None:
+		if y_true is None:
 			original_path = os.path.join(self.path, 'original_examples.npy')
-			original_data = np.load(original_path)
+			y_true = np.load(original_path)
 
 		
 
 		cm = confusion_matrix(
-			original_data,
-			pred_data,
+			y_true,
+			y_pred,
 			normalize="true" if normalize else None
 		)
 
@@ -188,16 +192,15 @@ class Plotting():
 			plt.show()
 		plt.close()
 
-	def plot_roc_curve(self, font_size=11, figsize=(8,5), fpr=None, tpr=None, fpr_threshold=1e-5):
+	def plot_roc_curve(self, font_size=11, figsize=(8,5), fpr_threshold=1e-5, y_pred=None, y_true=None):
 		
 		self.update_font(font_size=font_size)
 		
 		fig, ax = plt.subplots(figsize=figsize)
 
-		if (fpr or tpr) is None:
-			y_pred, y_true = self._load_predictions(None, None)
+		y_pred, y_true = self._load_predictions(y_pred, y_true)
 
-			fpr, tpr, thresholds = roc_curve(y_true, y_pred)
+		fpr, tpr, thresholds = roc_curve(y_true, y_pred)
 
 		roc_auc, tpr_at_fpr, fpr_threshold, cut, real_fpr_value = self.evaluate.get_cut(fpr=fpr, tpr=tpr, thresholds=thresholds, fpr_threshold=fpr_threshold)
 
@@ -242,6 +245,13 @@ class Plotting():
 		if self.y_true is None:
 			true_path = os.path.join(self.path, 'original_examples.npy')
 			self.y_true = np.load(true_path)
+
+		if self.meta_data.get("model_type") == "autoencoder":
+			if self.y_pred.ndim == 1 and self.y_true.ndim == 1:
+				# Get the features back from flattened arrays
+				n_features = len(self.meta_data.get("features", []))
+				self.y_pred = self.y_pred.reshape((-1, n_features))
+				self.y_true = self.y_true.reshape((-1, n_features))
 
 		return self.y_pred, self.y_true
 

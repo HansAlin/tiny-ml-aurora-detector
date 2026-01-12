@@ -7,20 +7,20 @@ import numpy as np
 
 
 class Converter():
-	def __init__(self, original_meta_data_path=None, data_path=None, tiny_ml_meta_data_path=None, tiny_ml_model_name=None) -> None:
+	def __init__(self, original_meta_data_path=None, data_path=None, tiny_ml_path=None, tiny_ml_model_name=None) -> None:
 		self.meta_data_original_path = original_meta_data_path
 		self.meta_data_original = DictManager(path=original_meta_data_path)
 		self.dataloader = DeepDataset(data_path=data_path,
 									meta_data=None,
 									meta_data_path=self.meta_data_original_path)
 		meta_data_tiny_ml_dict = self.meta_data_original.copy_dict()
-		self.meta_data_tiny_ml = DictManager(path=tiny_ml_meta_data_path, initial=meta_data_tiny_ml_dict)
-		self.meta_data_tiny_ml['model_dir'] = "tiny_ml_meta_data_path"
+		self.meta_data_tiny_ml = DictManager(path=tiny_ml_path + "/meta_data.json", initial=meta_data_tiny_ml_dict)
+		self.meta_data_tiny_ml['model_dir'] = tiny_ml_path
 		self.meta_data_tiny_ml['load_weights'] = False
 		self.meta_data_tiny_ml['resume_training'] = False
 		self.meta_data_tiny_ml['model_type'] = 'tiny_ml_classifier'
 		self.meta_data_tiny_ml['model_name'] = tiny_ml_model_name
-		self.meta_data_tiny_ml.path = tiny_ml_meta_data_path + "/meta_data.json"
+		self.meta_data_tiny_ml.path = tiny_ml_path + "/meta_data.json"
 
 
 	def get_representative_data(self, save_subset_path="data/processed/subset_unlabeled.npz", number_of_values=200):
@@ -90,23 +90,18 @@ class Converter():
 
 		return y_pred, Y
 
-
-
-
-
-
 	def get_tflite_converter(self, weights_path="experiments/experiment_2/encoder_classifier_final.weights.h5"):
 		model_builder = ModelBuilder()
 
 		model = model_builder.build_model(
-				width_layer_1 = self.meta_data.get('width_layer_1', 64),
-				width_layer_2 = self.meta_data.get('width_layer_2', 32),
-				activation =    self.meta_data.get('activation', 'relu'),
-				features =  len(self.meta_data.get('features', [])),
-				latent_size =   self.meta_data.get('latent_size', 2),
-				model_type =    self.meta_data.get('model_type', 'autoencoder'),
-				width_layer_last=self.meta_data.get('width_layer_last', 10),
-				output_size = self.meta_data.get('output_size', 1)
+				width_layer_1 = self.meta_data_original.get('width_layer_1', 64),
+				width_layer_2 = self.meta_data_original.get('width_layer_2', 32),
+				activation =    self.meta_data_original.get('activation', 'relu'),
+				features =  len(self.meta_data_original.get('features', [])),
+				latent_size =   self.meta_data_original.get('latent_size', 2),
+				model_type =    self.meta_data_original.get('model_type', 'autoencoder'),
+				width_layer_last=self.meta_data_original.get('width_layer_last', 10),
+				output_size = self.meta_data_original.get('output_size', 1)
 			)
 		
 		model.load_weights(weights_path)
@@ -135,20 +130,32 @@ class Converter():
 
 
 if __name__ == "__main__":
+	experiment_nr = 1
+	fpr_threshold = 1e-5
+	tiny_ml_model_name = "tiny_ml_classifier"
+	tiny_ml_path = f"experiments/tiny_ml_classifier_experiment_{experiment_nr}"
+	original_meta_data_path = f"experiments/classifier_experiment_{experiment_nr}/meta_data.json"
+	weights_to_original_model = f"experiments/classifier_experiment_{experiment_nr}/encoder_classifier_final.weights.h5"
+	test_data_path = "data/processed/processed_data_2_2024-12-01--2025-11-30.pkl"
+	data_for_digitalization = "data/processed/labeled_data.npz"
+	converter = Converter(original_meta_data_path=original_meta_data_path,
+					   data_path=data_for_digitalization,
+					   tiny_ml_path=tiny_ml_path,
+					   tiny_ml_model_name=tiny_ml_model_name)
+	
+	plotting = Plotting(meta_data_path=None, meta_data=converter.meta_data_tiny_ml)
+	evaluating = Evaluate(y_pred=None, y_true=None, meta_data_path=None, meta_data=converter.meta_data_tiny_ml)
 
-	tiny_ml_path = r"experiments/tiny_ml_classifier_experiment_1"
-	converter = Converter(original_meta_data_path="experiments/experiment_2/meta_data.json",
-					   data_path="data/processed/labeled_data.npz",
-					   tiny_ml_meta_data_path=tiny_ml_path,
-					   tiny_ml_model_name="tiny_ml_classifier")
-	plotting = Plotting(meta_data_path=converter.meta_data_tiny_ml.path)
-	evaluating = Evaluate(None, None, None, meta_data=converter.meta_data_tiny_ml)
-
-	tflite_model_quant = converter.get_converted_model(weights_path="experiments/experiment_2/encoder_classifier_final.weights.h5")
+	tflite_model_quant = converter.get_converted_model(weights_path=weights_to_original_model)
 	converter.get_interpretter(tflite_model_quant)
-	ypred, y =converter.test_lite_model(data_path=converter.dataloader.meta_data.get("data_name"))
-	print(ypred,y)
-	evaluating.collect_metrics(y_pred=ypred, y_true=y, fpr_threshold=1e-5)
+	y_pred, y_true =converter.test_lite_model(data_path=test_data_path)
+
+	evaluating.collect_metrics(y_pred=y_pred, y_true=y_true, fpr_threshold=fpr_threshold)
 	converter.meta_data_tiny_ml.save_dict(path=tiny_ml_path+"/meta_data.json")
+	fpr, tpr, thresholds = evaluating.roc(y_pred=y_pred, y_true=y_true)
+
+	
+	plotting.plot_confusion_matrix(y_pred=y_pred, y_true=y_true)
+	plotting.plot_roc_curve(fpr_threshold=fpr_threshold, y_pred=y_pred, y_true=y_true)
 
 
