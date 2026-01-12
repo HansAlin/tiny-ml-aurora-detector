@@ -49,3 +49,5 @@ experiments/
 *.gz
 *.xml
 *.bcf
+*.bib
+*.bbl-SAVE-ERROR

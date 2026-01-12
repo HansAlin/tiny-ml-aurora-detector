@@ -13,7 +13,7 @@
 \usepackage[compat=1.1.0]{tikz-feynman}
 \usepackage[backend=biber,style=numeric-comp,]{biblatex}
 \usepackage{a4wide}
-%\addbibresource{report/bibliotek.bib} %Imports bibliography file
+\addbibresource{Machine Learning.bib} %Imports bibliography file
 
 \title{Thesis}
 \author{Hans Alin}
@@ -21,7 +21,76 @@
 
 \begin{document}
 \section{Introduction}
+The interset for aureora follows to some exdent the solarcykel which menas that the during large activits in the sun the probabilty for auriora vents increarses. And the incres possibilty for autora events pushes the inters amopng not scientific citisenst to step outsid in the cold and dark to se the aurora if we consider the borelis. % ref.
+The groving interst for aurora during solar-cykle paek activuty, does not only gives the oportynity for a the community to explore an amaizing color explosion in the night sky, but can also be the connection to a more scienfic aproch to the phenomene and an eager to learn more about the space weather and the sun-earth connection. \par
+In order to maximize the chances of observing aurora, a special designed aurora detector have been created \cite{alinAuroraDetectorAffordable2022}. This detector uses firstly light sensors to measure the light intensity in the sky, and secondly temperature and humidty the estimate cloud cover. An algorithm have been developed to combine the data from these sensors to provide an aurora probability index. 
+\subsection{Deployment requirements on aurora detector}
+In the light of aurora detector a natural selection of deployment of the physical device would be in remote areas with low light pollution and minimal human activity. However, since the teh overall idea of the device is to alert neigbourging citizens that an aurora event is happening, the device should not be deployed in areas where no one lives. Therefore, the device should be able to handle various weather conditions, including frost, snow, rain, and arbtray artifical light at least to some extent. \par
+This restricts the posibilties of deployment locations to in side the urban areas or suburban areas where the device can be placed on rooftops or in antenna toweres. \par
+The main motivation for the project \cite{alinAuroraDetectorAffordable2022} was to create an affordable aurora detector that could be deployed in larger numbers close to populated areas to increase the chances of citizens observing aurora events. This means that both the cost of the device and the cost of deployment should be kept low. \par
+Considering the deployment cost, the device should be selfsustained in terms of power consumption, meaning that it should use a solar panel and a battery to store energy, this implies no extra cost for power supply. \par
+It is also consieder that device will have WiFi connection sicne that is a common feature in urban and suburban areas, this will enable the device to send alerts the community. \par
 
-% \printbibliography
+\subsection{Motivations for applying Deep-Learning model on Aurora Detector}
+The main motivation for applying deep-learning models to the aurora detector is to enahnce the detection of aurora events while keeping the false positive rate low. The current algorithm, while effective, have stille some issues when frost or snow is present on the sensor, leading to false positives. \par
+In \cite{sahaMachineLearningMicrocontrollerClass2022}, \cite{wardenTinymlMachineLearning2019} the point out the the advance of using edge Ai, e.i . deploying machine learning models on microcontrollers, to enable real-time data processing and decision-making directly on the device and the shortcomming. \par
+In \cite{situnayakeAIEdge2023} the menthon the limitation in bandwidth which might not be a big issue for the aurora detector, deployed in urban or suburban areas with WiFi connection, but still a point to consider. It have been shown that most of embedded device power consumtuin comes from the transfering of data \cite{karicSendLessMore2025a}. \par
+In \cite{wardenTinymlMachineLearning2019}  they emphesice the aspect of latency, which is a important factor for the aurora detector since the goal is to alert citizens in real-time when an aurora event is happening. Getting an allert a few minutes late might result in missing the event. \par
+Both \cite{sahaMachineLearningMicrocontrollerClass2022} and \cite{wardenTinymlMachineLearning2019} highlights the privacy aspect of edge AI, since data is processed locally on the device, there is less risk of sensitive information being exposed during data transmission. However, this is not a major consern regarding data for the aurora detector. \par
+Lastly the main motivtation for using deep-learning models on the aurora detector is the potential for the model to reject false positives caused by frost, snow, and other environmental factors, but still have an accuracy as good as or better than the current algorithm \cite{alinAuroraDetectorAffordable2022}. \par
+
+\section{Electronics overview}
+This section is fully described in \cite{alinAuroraDetectorAffordable2022} and here follows a short overweivew of the electronics used in the aurora detector.
+\subsection{Microcontroller}
+The current aurora detector uses an ESP-8266 deployed on a developer board from Wemos, Wemos D1 MINI. The microcontroller is used to read data from the sensors, process the data using the aurora detection algorithm, send the raw data and aurora probability index to a server via WiFi. The only up and running device is powered by a 5V power supply continously. \par
+Since the goal is to deploy deep-learning models on the aurora detector, the microcontroller must be replaced by a more powerful one, capable of running the deep-learning models. The device considerd in this project is a Raspberry Pi Pico W, which is a microcontroller with WiFi capabilities and enough processing power to run deep-learning models using TensorFlow Lite for Microcontrollers. \par
+\subsection{Light sensor}
+There are two TSL2591 lightsensors deployed on the aurora detetcter. In front of one of the sensors a lulty layer interference filter is applyd filtering freequncies close to 557 nm (green), whcich is the most prominent frequncy emitted during aurora events. The sensorsn returns values between 0-65535, in given gain, representing the light intensity measured by the sensor, from two different channels with slightly different spectral responses, one more agaibt the IR spectrum and one closer to the visual spectrum. \par
+\subsection{Infrared thermometer}
+The infrared thermometer is a MLX90614 which is used to measure the "temperature" of the sky. The basic idea behind the sensor is that a clear sky will have a lower temperature compared to a cloudy sky, since clouds emit infrared radiation. The ssensor returns a temperature value in celsius between in floating point representation. \par
+\subsection{Humidity and temperature sensor}
+The humidity and temperature sensor is a DHT22 which is used to measure the ambient temperature and humidity. The main purpose of this sensor is that the values obtained can be used to calculate for a given humidty and temperature what the clear sky temperature should be. This can then be compared to the measured sky temperature from the infrared thermometer to estimate cloud cover.  
+
+\section{Data collection and preprocessing}
+The data collected for this project was conducted between 2024-12-01 and 2025-11-30 from a device deployed in Mora , Sweden (61.0°N, 14.5°E). The data is collected from a poblic avalaiable Thingspeak instance \cite{AuroraDetectorThingSpeak}, eventhough administartor access is required to download the full dataset. \par
+The raw dataset contains the following feautures:
+
+created_at: Timestamp of when the data was recorded.
+entry_id: Unique identifier for each data entry.
+Field 1: Light intensity from the filtered TSL2591 sensor (green light).
+Field 2: Light intensity from the unfiltered TSL2591 sensor.
+Field 3: Calculated on microcontroller, clear sky value based on data from MLX90614 and DHT22
+Field 4: Calculated on microcontroller, aurora points ~0-20 based on an algorithm combining data from all sensors.
+Field 5: Temperature from DHT22 sensor.
+Field 6: Humidity from DHT22 sensor.
+Field 7: Sky temperature from MLX90614 sensor.
+Field 8: The IR-channel from the TSL2591 sensor without a filter.
+
+Since the data had an median sampling rate of 1/15 Hz, the the full year data contaned approximately 2 million samples. To save some computational power a algrothm was applied to calculate if its day or night that takes current date time and location into account. This algorith is currently operationg as an veto on the current aurora device, but this information is not sent to Thingspeak. This alogrithm was applied to the full dataset to filter out day-time samples, since visuable aurora events only occur during the dark hoyurs this reduced the data set by approximatöy half. \par 
+
+To capture frost add on and frost removal two additional features were added to the data set. Since humidity along side with the temperature device capture to large extend the posiblity for frost to occur, a new feature called "Rolling Mean Temperature (C)" and "Rolling Mean Humidity (\%)" where added to the dataset. The rolling mean was calculated using a window size of 20 minutes with the previous 20 minutes data. Endpoints were handled such that only samples within a full window were considered. The idea was that these two values could help the model to learn when frost is likely to occur and when it is likely to melt away. \par
+
+Since in this project goal is to apply deep-learning models on the aurora detector, it was considerd that most of the precalculations done on the microcontroller should be avoided, to let the model learn directly from the raw sensor data. Therefore, only the following features were used for training the models:
+
+Filter 557nm, Light intensity from the filtered TSL2591 sensor (green light).
+No filter,Light intensity from the unfiltered TSL2591 sensor.
+Temperature (C), Temperature from DHT22 sensor.
+Humidity (\%), Humidity from DHT22 sensor.
+Sky Temperature (C), Sky temperature from MLX90614 sensor.
+IR, The IR-channel from the TSL2591 sensor without a filter.
+Rolling Mean Temperature (C), Rolling Mean Temperature (C) over 20 minutes.
+Rolling Mean Humidity (\%), Rolling Mean Humidity (\%) over 20 minutes.
+
+\subsection{Labeling strategy}
+From observations 
+
+
+
+
+
+
+
+
+\printbibliography
 
 \end{document}

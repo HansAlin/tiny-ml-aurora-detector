@@ -303,9 +303,9 @@ if __name__ == "__main__":
 		data_path=args.data_path
 	)
 
-	# train.create_dataset()
-	# train.create_callbacks(patience=10)
-	# train.train()
+	train.create_dataset()
+	train.create_callbacks(patience=10)
+	train.train()
 
 	if train.meta_data.get('model_type') != 'autoencoder':
 		# Evaluate only for autoencoder model!
