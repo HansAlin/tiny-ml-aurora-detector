@@ -109,6 +109,9 @@ class Evaluate():
 		model = self.builder.wrapper_build_model(meta_data=self.meta_data)
 		mult, add, mack = self.builder.get_MAC(model)
 
+		if cut == np.inf:
+			cut = 1.0
+
 		if self.meta_data is not None:
 			self.meta_data.update('roc_auc', float(roc_auc))
 			self.meta_data.update('tpr_at_fpr', float(tpr_at_fpr))
