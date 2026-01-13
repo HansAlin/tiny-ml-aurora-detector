@@ -3,8 +3,12 @@ import os
 from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_score, recall_score, f1_score
 import matplotlib.pyplot as plt
 from tiny_ml_code.data_handler import DictManager
-from tiny_ml_code.models.FC_autoencoder import ModelBuilder
-from tensorflow import keras
+
+
+
+from numpy.linalg import inv
+
+
 
 
 class Evaluate():
@@ -14,9 +18,9 @@ class Evaluate():
 		ROC-values: produce the values for obtaining a ROC-curve
 	"""
 
-	def __init__(self, y_pred : np.array, y_true : np.array, meta_data_path="experiments/experiment_2/meta_data.json", meta_data=None) -> None:
+	def __init__(self, y_pred=None, y_true=None, meta_data_path=None, meta_data=None) -> None:
 		
-		self.builder = ModelBuilder()
+		
 
 		self.y_pred = y_pred
 		self.y_true = y_true
@@ -43,7 +47,7 @@ class Evaluate():
 			print(f"Could not load y_pred or y_true from meta_data path. Error: {e}")
 
 
-
+	
 	def get_roc(self, y_pred=None, y_true=None):
 		"""This method computes the ROC-curve values
 		It can use the y_pred and y_true provided in the class initialization
@@ -63,11 +67,12 @@ class Evaluate():
 		if y_true is not None:
 			self.y_true = y_true
 
-		fpr, tpr, thresholds = roc_curve(self.y_true, self.y_pred)
+		fpr, tpr, thresholds = roc_curve(y_true, y_pred)
 
 		return fpr, tpr, thresholds
 
-	def get_cut(self, fpr, tpr, thresholds, fpr_threshold):
+	@staticmethod
+	def get_cut(fpr, tpr, thresholds, fpr_threshold):
 
 		indices = np.where(fpr <= fpr_threshold)[-1]
 		if len(indices) > 0:
@@ -98,15 +103,21 @@ class Evaluate():
 
 		return precision, recall, f1, cm
 	
-	def collect_metrics(self,fpr_threshold=1e-5, y_pred=None, y_true=None):
+	def collect_metrics(self,fpr_threshold=1e-5, y_pred=None, y_true=None, model=None):
+		if model is None:
+			from tiny_ml_code.models.FC_autoencoder import ModelBuilder
+			self.builder = ModelBuilder()
+			model = self.builder.wrapper_build_model(meta_data=self.meta_data)
+
 		if y_pred is not None:
 			self.y_pred = y_pred
 		if y_true is not None:
 			self.y_true = y_true
-		fpr, tpr, thresholds = self.get_roc()
+
+		fpr, tpr, thresholds = self.get_roc(y_pred=self.y_pred, y_true=self.y_true)
 		roc_auc, tpr_at_fpr, fpr_threshold, cut, real_fpr_value = self.get_cut(fpr, tpr, thresholds, fpr_threshold=fpr_threshold)
 		precision, recall, f1, cm = self.get_metrics(cut)
-		model = self.builder.wrapper_build_model(meta_data=self.meta_data)
+
 		mult, add, mack = self.builder.get_MAC(model)
 
 		if cut == np.inf:
@@ -146,15 +157,101 @@ class Evaluate():
 
 		}
 
+class Predicter():
+
+	def __init__(self, data_path=None, weights_file='Autoencoder_final.weights.h5', save_data=False, val_fraction=0.1, test_fraction=0.1) -> None:
+		from tiny_ml_code.data_set_loader import DeepDataset
+		data_loader = DeepDataset(data_path=data_path)
+		data = data_loader.prepare_tf_datasets(
+			supervised_learning=True,
+			normalize=True,
+			val_fraction=val_fraction,
+			test_fraction=test_fraction,
+			return_numpy=True
+		)
+		self.x_val, self.y_val = data['val']
+		self.x_test, self.y_test = data['test']
+		self.x_train, self.y_train = data['train']
+		self.unlabeled_data = data['unlabeled']
+
+		self.weights_file = weights_file
+		if save_data:
+			np.savez("data/processed/numpy_data.npz", x_train=self.x_train, y_train=self.y_train, x_val=self.x_val, y_val=self.y_val, x_test=self.x_test, y_test=self.y_test, unlabeled_data=self.unlabeled_data)
+
+	def get_model(self, meta_data:DictManager, weights_file=None):
+
+		from tiny_ml_code.models.FC_autoencoder import ModelBuilder
+		if weights_file is None:
+			weights_file = self.weights_file
+		weights_path = os.path.join(meta_data.get('model_dir'), weights_file)
+		builder = ModelBuilder()
+		model = builder.wrapper_build_model(meta_data=meta_data, compiled=True, weights_path=weights_path)
+
+		return model
+	
+	def autoencoder_roc(self, mse, y_true):
+
+		evaluator = Evaluate(y_pred=mse, y_true=y_true)
+		fpr, tpr, thresholds = evaluator.get_roc()
+		return fpr, tpr, thresholds
+	
+	def infer(self, model, data_type='val'):
+		if data_type == 'val':
+			data = self.x_val
+		elif data_type == 'test':
+			data = self.x_test
+		y_pred = model.predict(data)
+		mse = np.mean(np.power(data - y_pred, 2), axis=1)
+
+		md_val = self.mahalanobis(model, data)
+
+
+		return mse, y_pred, md_val
+	
+	def mahalanobis(self, model, data):
+
+		encoder = model.encoder
+
+		Z_train = encoder.predict(self.unlabeled_data)
+		Z_data = encoder.predict(data)
+
+		mu = Z_train.mean(axis=0)
+		cov = np.cov(Z_train, rowvar=False)
+
+		cov_inv = inv(cov)
+
+		md_val = self.mahalanobis_distance(Z_data, mu, cov_inv)
+
+		return md_val
+
+	def mahalanobis_distance(self, Z, mu, cov_inv):
+		diff = Z - mu
+		return np.sqrt(np.sum(diff @ cov_inv * diff, axis=1))
+		
+
+
 
 
 
 			
 if __name__ == "__main__":
-	from tiny_ml_code.plotting import Plotting
-	evaluator = Evaluate(y_pred=None, y_true=None, meta_data_path="experiments/classifier_experiment_2/meta_data.json")
-	evaluator.collect_metrics()
 
+	predicter = Predicter(data_path='./data/processed/processed_data_2_2024-12-01--2025-11-30.pkl', save_data=True)
+
+	for experiment in range(1,7):
+		experiment_path = f'experiments/experiment_{experiment}'
+		meta_data_path = os.path.join(experiment_path, 'meta_data.json') 
+
+		meta_data = DictManager(path=meta_data_path)
+
+		model = predicter.get_model(meta_data=meta_data)
+		mse, y_val_pred, md_val = predicter.infer(model=model)
+		numpay_path = os.path.join(experiment_path, 'val_predictions.npz')
+		np.savez(numpay_path, mse=mse, md_val=md_val, y_val_pred=y_val_pred, x_val=predicter.x_val, labels=predicter.y_val)
+		
+		mse, y_val_pred, md_test = predicter.infer(model=model, data_type='test')
+		numpay_path = os.path.join(experiment_path, 'test_predictions.npz')
+		np.savez(numpay_path, mse=mse, md_test=md_test, y_test_pred=y_val_pred, x_test=predicter.x_test, labels=predicter.y_test)
 
 
 

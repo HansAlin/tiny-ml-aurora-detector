@@ -142,6 +142,8 @@ class DeepDataset(AuroraDatasetLoader):
 
 		unsupervised_df, supervised_df = self.split_to_unsupervised_data(data=data)
 
+
+
 		if supervised_learning:
 			data = supervised_df.copy()
 		else:
@@ -157,6 +159,9 @@ class DeepDataset(AuroraDatasetLoader):
 		# Keep only features + time column + label (if supervised)
 		if supervised_learning:
 			data = data[self.features + [self.time_column, 'label']]
+			if return_numpy:
+				unsupervised_df = unsupervised_df[self.features + [self.time_column]]
+			
 		else:
 			data = data[self.features + [self.time_column]]
 
@@ -175,6 +180,8 @@ class DeepDataset(AuroraDatasetLoader):
 		train_df = train_df.drop(columns=[self.time_column])
 		val_df  = val_df.drop(columns=[self.time_column])
 		test_df  = test_df.drop(columns=[self.time_column])
+		if return_numpy:
+			unsupervised_df = unsupervised_df.drop(columns=[self.time_column])
 
 
 		# Normalize
@@ -182,6 +189,8 @@ class DeepDataset(AuroraDatasetLoader):
 			train_df = self.normalize_data(data=train_df)
 			val_df   = self.normalize_data(val_df, use_predefined_values=True)
 			test_df  = self.normalize_data(test_df, use_predefined_values=True)
+			if return_numpy:
+				unsupervised_df = self.normalize_data(unsupervised_df, use_predefined_values=True)
 
 
 		def make_ds(X, y=None, shuffle=False):
@@ -204,10 +213,15 @@ class DeepDataset(AuroraDatasetLoader):
 			y_test = test_df['label'].values.astype('float32')
 
 			if return_numpy:
+				X_unlabeled = unsupervised_df.values.astype('float32')
+			
+
+			if return_numpy:
 				return {
 					"train": (X_train, y_train),
 					"val":   (X_val, y_val),
 					"test":  (X_test, y_test),
+					"unlabeled": X_unlabeled,
 				}
 
 			return (

@@ -5,7 +5,7 @@ import json
 import numpy as np
 
 from tiny_ml_code.data_handler import DictManager
-from tiny_ml_code.evaluating import Evaluate 
+
 
 class Plotting():
 	def __init__(self, meta_data_path, show_plots=False, meta_data=None) -> None:
@@ -15,7 +15,7 @@ class Plotting():
 		else:
 			self.meta_data = DictManager(path=meta_data_path)
 
-		self.evaluate = Evaluate(y_pred=None, y_true=None, meta_data_path=None, meta_data=None)
+		
 		self.path = self.meta_data.get('model_dir', '')
 		self.show_plots = show_plots
 
@@ -45,7 +45,7 @@ class Plotting():
 		self.history_plot()
 
 
-	def plot_confusion_matrix(self, normalize=True, labels = ["No Aurora", "Aurora"], font_size=11, figsize=(8,5), y_pred=None, y_true=None, threshold=0.5):
+	def plot_confusion_matrix(self, normalize=True, labels = ["No Aurora", "Aurora"], font_size=11, figsize=(8,5), y_pred=None, y_true=None, threshold=0.5, prefix=''):
 
 		self.update_font(font_size=font_size)
 
@@ -82,11 +82,11 @@ class Plotting():
 			plt.show()
 		plt.close()
 
-	def history_plot(self, font_size=11, figsize=(8,5)):
+	def history_plot(self, font_size=11, figsize=(8,5), prefix=''):
 
 		self.update_font(font_size=font_size)
 
-		history_path = os.path.join(self.path, 'history.json')
+		history_path = os.path.join(self.path, f"{prefix}history.json")
 
 		with open(history_path, 'r') as f:
 			self.history = json.load(f)
@@ -120,13 +120,13 @@ class Plotting():
 		save_dir = os.path.join(self.path, "plots")
 		os.makedirs(save_dir, exist_ok=True)
 
-		save_plot_path = os.path.join(save_dir, "training_history.png")
+		save_plot_path = os.path.join(save_dir, f"{prefix}training_history.png")
 		fig.savefig(save_plot_path)
 		if self.show_plots:
 			plt.show()
 		plt.close()
 
-	def plot_examples(self, font_size=11):
+	def plot_examples(self, font_size=11, prefix=''):
 
 		self.update_font(font_size=font_size)
 
@@ -163,13 +163,13 @@ class Plotting():
 		save_dir = os.path.join(self.path, "plots")
 		os.makedirs(save_dir, exist_ok=True)
 
-		save_plot_path = os.path.join(save_dir, "example_residuals.png")
+		save_plot_path = os.path.join(save_dir, f"{prefix}example_residuals.png")
 		fig.savefig(save_plot_path)
 		if self.show_plots:
 			plt.show()
 		plt.close()
 
-	def plot_latent(self, font_size=11, figsize=(16,8)):
+	def plot_latent(self, font_size=11, figsize=(16,8), prefix=''):
 
 		self.update_font(font_size=font_size)
 
@@ -186,25 +186,29 @@ class Plotting():
 		save_dir = os.path.join(self.path, "plots")
 		os.makedirs(save_dir, exist_ok=True)
 
-		save_plot_path = os.path.join(save_dir, "latent_space.png")
+		save_plot_path = os.path.join(save_dir, f"{prefix}latent_space.png")
 		fig.savefig(save_plot_path)
 		if self.show_plots:
 			plt.show()
 		plt.close()
 
-	def plot_roc_curve(self, font_size=11, figsize=(8,5), fpr_threshold=1e-5, y_pred=None, y_true=None):
+	def plot_roc_curve(self, font_size=11, figsize=(8,5), fpr_threshold=1e-5, y_pred=None, y_true=None, prefix='', x_scale='log'):
 		
 		self.update_font(font_size=font_size)
 		
 		fig, ax = plt.subplots(figsize=figsize)
 
-		y_pred, y_true = self._load_predictions(y_pred, y_true)
+		# y_pred, y_true = self._load_predictions(y_pred, y_true)
 
 		fpr, tpr, thresholds = roc_curve(y_true, y_pred)
 
-		roc_auc, tpr_at_fpr, fpr_threshold, cut, real_fpr_value = self.evaluate.get_cut(fpr=fpr, tpr=tpr, thresholds=thresholds, fpr_threshold=fpr_threshold)
+		# Find threshold for desired FPR
+		idx = np.where(fpr <= fpr_threshold)[0][-1]
+		cut = thresholds[idx]
+		tpr_at_fpr = tpr[idx]
 
 		ax.plot(fpr, tpr)
+		ax.plot([1e-6, 1], [1e-6, 1], linestyle='--', color='gray')
 
 		ax.set_title(
 			f"ROC-curve\n"
@@ -214,13 +218,14 @@ class Plotting():
 		)
 		ax.set_xlabel("False Positive Rate")
 		ax.set_ylabel("True Positive Rate")
-		ax.set_xscale('log')
+		ax.set_xscale(x_scale)
 		plt.grid()
 
 		save_dir = os.path.join(self.path, "plots")
 		os.makedirs(save_dir, exist_ok=True)
 
-		save_path = os.path.join(save_dir, "roc_curve.png")
+		save_path = os.path.join(save_dir, f"{prefix}roc_curve.png")
+		plt.tight_layout()
 		fig.savefig(save_path)
 		if self.show_plots:
 			plt.show()

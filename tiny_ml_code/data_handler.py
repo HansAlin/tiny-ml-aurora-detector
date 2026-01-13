@@ -228,8 +228,11 @@ class DictManager:
 
 		if self.path is not None:
 			os.makedirs(os.path.dirname(self.path), exist_ok=True)
-			if self.data == {} and os.path.exists(self.path):
-				self.load_dict()
+			if os.path.exists(self.path):
+				try:
+					self.load_dict()
+				except Exception as e:
+					print(f"Error loading dict from {self.path}: {e}")
 
 
 
@@ -243,7 +246,7 @@ class DictManager:
 	def load_dict(self):
 		"""Load dict from JSON file."""
 		with open(self.path, 'r') as f:
-			self.data = json.load(f)
+			self.data =  json.load(f)
 
 	def save_dict(self, path=None):
 		"""Save dict to JSON file."""

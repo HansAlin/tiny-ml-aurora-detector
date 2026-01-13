@@ -187,7 +187,7 @@ class Train():
 
 		save_path = os.path.join( 
 				self.meta_data.get("model_dir"),  
-				f"{self.meta_data.get("model_name")}_final.weights.h5"
+				"model_final.weights.h5"
 				)
 		
 		self.model.save_weights(save_path)

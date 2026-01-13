@@ -168,7 +168,7 @@ class ModelBuilder():
 	def __init__(self) -> None:
 		pass
 
-	def wrapper_build_model(self, meta_data, compiled=False):
+	def wrapper_build_model(self, meta_data, compiled=False, weights_path=None):
 
 		VALID_KEYS = ['width_layer_1', 'width_layer_2', 'activation', 'features', 'latent_size', 'model_type', 'width_layer_last', 'output_size']
 		filtered_data = {}
@@ -185,6 +185,9 @@ class ModelBuilder():
 		if compiled:
 			model.compile(optimizer=keras.optimizers.Adam(), loss=meta_data.get('loss', 'mse'), metrics=meta_data.get('metrics', ['accuracy']))
 		
+		if weights_path is not None:
+			model.load_weights(weights_path)
+
 		return model
 
 	def build_model(self, width_layer_1=64, width_layer_2=32, activation='relu', features=8, latent_size=2, model_type='autoencoder', width_layer_last=10, output_size=1):
