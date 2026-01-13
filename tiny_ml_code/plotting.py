@@ -8,7 +8,7 @@ from tiny_ml_code.data_handler import DictManager
 
 
 class Plotting():
-	def __init__(self, meta_data_path, show_plots=False, meta_data=None) -> None:
+	def __init__(self, meta_data_path, show_plots=False, meta_data=None, y_pred=None, y_true=None) -> None:
 
 		if meta_data is not None:
 			self.meta_data = meta_data
@@ -21,6 +21,16 @@ class Plotting():
 
 		self.y_pred = None
 		self.y_true = None
+
+		if y_pred is None:
+			pred_path = os.path.join(self.path, 'reconstructed_examples.npy')
+			self.y_pred = np.load(pred_path)
+
+
+
+		if y_true is None:
+			original_path = os.path.join(self.path, 'original_examples.npy')
+			self.y_true = np.load(original_path)
 
 	def update_font(self, font_size=11):
 		plt.rcParams.update({
@@ -49,17 +59,7 @@ class Plotting():
 
 		self.update_font(font_size=font_size)
 
-		if y_pred is None:
-			pred_path = os.path.join(self.path, 'reconstructed_examples.npy')
-			y_pred = np.load(pred_path)
-
 		y_pred = (y_pred >= threshold).astype(int)
-
-		if y_true is None:
-			original_path = os.path.join(self.path, 'original_examples.npy')
-			y_true = np.load(original_path)
-
-		
 
 		cm = confusion_matrix(
 			y_true,
@@ -198,7 +198,7 @@ class Plotting():
 		
 		fig, ax = plt.subplots(figsize=figsize)
 
-		# y_pred, y_true = self._load_predictions(y_pred, y_true)
+		y_pred, y_true = self._load_predictions(y_pred, y_true)
 
 		fpr, tpr, thresholds = roc_curve(y_true, y_pred)
 
