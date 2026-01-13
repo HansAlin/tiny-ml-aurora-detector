@@ -42,15 +42,15 @@ class Plotting():
 			"ytick.labelsize": font_size,
 		})
 
-	def plot_results_collection(self):
+	def plot_results_collection(self, fpr_threshold=1e-4):
 		model_type = self.meta_data.get("model_type")
 
 		if model_type == "autoencoder":
 			self.plot_examples()
 			self.plot_latent()
 		else:
-			self.plot_confusion_matrix()
-			self.plot_roc_curve()
+			self.plot_confusion_matrix(threshold=fpr_threshold)
+			self.plot_roc_curve(fpr_threshold=fpr_threshold)
 
 		self.history_plot()
 
@@ -60,7 +60,7 @@ class Plotting():
 		self.update_font(font_size=font_size)
 
 		y_pred, y_true = self._load_predictions(None, None)
-		
+
 		y_pred = (y_pred >= threshold).astype(int)
 
 		cm = confusion_matrix(
