@@ -59,6 +59,8 @@ class Plotting():
 
 		self.update_font(font_size=font_size)
 
+		y_pred, y_true = self._load_predictions(None, None)
+		
 		y_pred = (y_pred >= threshold).astype(int)
 
 		cm = confusion_matrix(
