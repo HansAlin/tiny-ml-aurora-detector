@@ -113,18 +113,18 @@ class Evaluate():
 			cut = 1.0
 
 		if self.meta_data is not None:
-			self.meta_data.update('roc_auc', float(roc_auc))
-			self.meta_data.update('tpr_at_fpr', float(tpr_at_fpr))
-			self.meta_data.update('fpr_threshold', float(fpr_threshold))
-			self.meta_data.update('cut_threshold', float(cut))
-			self.meta_data.update('real_fpr_value', float(real_fpr_value))
-			self.meta_data.update('precision', float(precision))
-			self.meta_data.update('recall', float(recall))
-			self.meta_data.update('f1_score', float(f1))
-			self.meta_data.update('confusion_matrix', cm.tolist())
-			self.meta_data.update('multiplications', int(mult))
-			self.meta_data.update('additions', int(add))
-			self.meta_data.update('MACs', int(mack))
+			self.meta_data['roc_auc'] = float(roc_auc)
+			self.meta_data['tpr_at_fpr'] =  float(tpr_at_fpr)
+			self.meta_data['fpr_threshold'] = float(fpr_threshold)
+			self.meta_data['cut_threshold'] = float(cut)
+			self.meta_data['real_fpr_value'] = float(real_fpr_value)
+			self.meta_data['precision'] = float(precision)
+			self.meta_data['recall'] = float(recall)
+			self.meta_data['f1_score'] = float(f1)
+			self.meta_data['confusion_matrix'] = cm.tolist()
+			self.meta_data['multiplications'] = int(mult)
+			self.meta_data['additions'] = int(add)
+			self.meta_data['MACs'] = int(mack)
 
 
 
@@ -152,11 +152,8 @@ class Evaluate():
 			
 if __name__ == "__main__":
 	from tiny_ml_code.plotting import Plotting
-	evaluator = Evaluate(y_pred=None, y_true=None, meta_data_path="experiments/experiment_2/meta_data.json")
-	model_builder = ModelBuilder()
-	model = model_builder.wrapper_build_model(meta_data=evaluator.meta_data)
-	# trainable_count, non_trainable_count, flops = evaluator.get_model_parameters(model=model)
-
+	evaluator = Evaluate(y_pred=None, y_true=None, meta_data_path="experiments/classifier_experiment_2/meta_data.json")
+	evaluator.collect_metrics()
 
 
 
