@@ -50,7 +50,7 @@ class Plotting():
 			self.plot_latent()
 		else:
 			self.plot_confusion_matrix(threshold=fpr_threshold)
-			self.plot_roc_curve(fpr_threshold=fpr_threshold)
+			self.plot_roc_curve(fpr_threshold=fpr_threshold, x_scale='linear')
 
 		self.history_plot()
 

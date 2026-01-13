@@ -166,7 +166,7 @@ class DeepDataset(AuroraDatasetLoader):
 			data = data[self.features + [self.time_column]]
 
 		# Split into train/val/test
-		train_val_df,  test_df = train_test_split(data, test_size=test_fraction, random_state=42, shuffle=False)
+		train_val_df,  test_df = train_test_split(data, test_size=test_fraction, random_state=42, shuffle=True)
 		train_df, val_df = train_test_split(train_val_df, test_size=val_fraction / (1 - test_fraction), random_state=42, shuffle=True)
 		print(f"Training size: {len(train_df)/len(data)*100:.0f}%")
 		print(f"Validation size: {len(val_df)/len(data)*100:.0f}%")
