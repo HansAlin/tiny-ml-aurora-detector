@@ -242,6 +242,7 @@ class Plotting():
 		Lazy loader for predictions and labels.
 		Explicit arguments override cached values.
 		"""
+		print("Loading predictions and true labels...")
 
 		if y_pred is not None:
 			self.y_pred = y_pred

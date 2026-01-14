@@ -285,7 +285,7 @@ if __name__ == "__main__":
 	parser.add_argument(
 		"--model_dir",
 		type=str,
-		default=r"experiments/experiment_3", 
+		default=r"experiments/experiment_1", 
 		help="Directory to save model weights and outputs"
 	)
 
@@ -303,9 +303,9 @@ if __name__ == "__main__":
 		data_path=args.data_path
 	)
 
-	train.create_dataset()
-	train.create_callbacks(patience=10)
-	train.train()
+	# train.create_dataset()
+	# train.create_callbacks(patience=10)
+	# train.train()
 
 	if train.meta_data.get('model_type') != 'autoencoder':
 		# Evaluate only for autoencoder model!
