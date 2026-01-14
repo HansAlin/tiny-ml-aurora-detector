@@ -285,7 +285,7 @@ if __name__ == "__main__":
 	parser.add_argument(
 		"--model_dir",
 		type=str,
-		default=r"experiments/experiment_1", 
+		default=r"experiments/classifier_experiment_1", 
 		help="Directory to save model weights and outputs"
 	)
 
@@ -310,7 +310,7 @@ if __name__ == "__main__":
 	if train.meta_data.get('model_type') != 'autoencoder':
 		# Evaluate only for autoencoder model!
 		evaluator = Evaluate(y_pred=None, y_true=None, meta_data_path=meta_data_path)
-		evaluator.collect_metrics(fpr_threshold=1e-5)
+		evaluator.collect_metrics(fpr_threshold=1e-4)
 
 	plotting = Plotting(meta_data_path=None, meta_data=train.meta_data)
 	plotting.plot_results_collection()
