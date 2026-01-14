@@ -10,12 +10,12 @@ from tiny_ml_code.data_set_loader import DeepDataset
 from tiny_ml_code.evaluating import Predicter, Evaluate
 
 
-# fpr_threshold = 1e-4
+fpr_threshold = 1e-4
 # for experiment in range(1,7):
 # 	experiment_path = f'experiments/experiment_{experiment}'
 # 	meta_data_path = os.path.join(experiment_path, 'meta_data.json')
 # 	meta_data = DictManager(path=meta_data_path)
-# 	plotting = Plotting(meta_data_path=None, show_plots=True, meta_data=meta_data)
+# 	plotting = Plotting(meta_data_path=None, show_plots=False, meta_data=meta_data, override_reshaping=True)
 # 	data_path = os.path.join(experiment_path, 'val_predictions.npz')
 # 	data = np.load(data_path)
 # 	print(f"Headers in {data_path}:", data.files)
@@ -70,20 +70,21 @@ from tiny_ml_code.evaluating import Predicter, Evaluate
 # 	meta_data.save_dict()
 
 
-# 	plotting.plot_roc_curve(y_pred=mse_test, y_true=test_labels, x_scale='linear', fpr_threshold=fpr_threshold)
-# 	plotting.plot_confusion_matrix(y_pred=mse_test, y_true=test_labels, threshold=cut_threshold, normalize=True)
+# 	plotting.plot_roc_curve(y_pred=mse_test, y_true=test_labels, x_scale='linear', fpr_threshold=fpr_threshold, prefix='test_')
+# 	plotting.plot_confusion_matrix(y_pred=mse_test, y_true=test_labels, threshold=cut_threshold, normalize=True, prefix='test_')
 
 
 predicter = Predicter(data_path='./data/processed/processed_data_2_2024-12-01--2025-11-30.pkl', save_data=True)
 
 
 fpr_threshold = 1e-4
-for experiment in range(13,17):
+experiments = [11,12,13,14,15,16] # 1,2,3,4,5,6,
+for experiment in experiments:
 
 	experiment_path = f'experiments/classifier_experiment_{experiment}'
 	meta_data_path = os.path.join(experiment_path, 'meta_data.json')
 	meta_data = DictManager(path=meta_data_path)
-	plotting = Plotting(meta_data_path=None, show_plots=True, meta_data=meta_data)
+	plotting = Plotting(meta_data_path=None, show_plots=False, meta_data=meta_data, override_reshaping=True)
 	model = predicter.get_model(meta_data=meta_data, weights_file='model_final.weights.h5')
 	val_y_pred = model.predict(predicter.x_val)
 	val_y_true = predicter.y_val
@@ -120,8 +121,8 @@ for experiment in range(13,17):
 
 	meta_data.save_dict()
 
-	plotting.plot_roc_curve(y_pred=test_y_pred, y_true=test_y_true, x_scale='linear', fpr_threshold=fpr_threshold)
-	plotting.plot_confusion_matrix(y_pred=test_y_pred, y_true=test_y_true, threshold=cut_threshold, normalize=True)
+	plotting.plot_roc_curve(y_pred=test_y_pred, y_true=test_y_true, x_scale='linear', fpr_threshold=fpr_threshold, prefix='test_')
+	plotting.plot_confusion_matrix(y_pred=test_y_pred, y_true=test_y_true, threshold=cut_threshold, normalize=True, prefix='test_')
 
 
 

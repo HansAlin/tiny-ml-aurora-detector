@@ -8,7 +8,9 @@ from tiny_ml_code.data_handler import DictManager
 
 
 class Plotting():
-	def __init__(self, meta_data_path, show_plots=False, meta_data=None, y_pred=None, y_true=None) -> None:
+	def __init__(self, meta_data_path, show_plots=False, meta_data=None, y_pred=None, y_true=None, override_reshaping=False) -> None:
+
+		self.override_reshaping = override_reshaping
 
 		if meta_data is not None:
 			self.meta_data = meta_data
@@ -253,12 +255,14 @@ class Plotting():
 			true_path = os.path.join(self.path, 'original_examples.npy')
 			self.y_true = np.load(true_path)
 
-		if self.meta_data.get("model_type") == "autoencoder":
-			if self.y_pred.ndim == 1 and self.y_true.ndim == 1:
-				# Get the features back from flattened arrays
-				n_features = len(self.meta_data.get("features", []))
-				self.y_pred = self.y_pred.reshape((-1, n_features))
-				self.y_true = self.y_true.reshape((-1, n_features))
+		if not self.override_reshaping:
+			
+			if self.meta_data.get("model_type") == "autoencoder":
+				if self.y_pred.ndim == 1 and self.y_true.ndim == 1:
+					# Get the features back from flattened arrays
+					n_features = len(self.meta_data.get("features", []))
+					self.y_pred = self.y_pred.reshape((-1, n_features))
+					self.y_true = self.y_true.reshape((-1, n_features))
 
 		return self.y_pred, self.y_true
 
