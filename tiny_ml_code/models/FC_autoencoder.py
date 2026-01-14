@@ -170,7 +170,7 @@ class ModelBuilder():
 
 	def wrapper_build_model(self, meta_data, compiled=False, weights_path=None):
 
-		VALID_KEYS = ['width_layer_1', 'width_layer_2', 'activation', 'features', 'latent_size', 'model_type', 'width_layer_last', 'output_size']
+		VALID_KEYS = ['width_layer_1', 'width_layer_2', 'activation', 'features', 'latent_size', 'model_type', 'width_last_layer', 'output_size']
 		filtered_data = {}
 
 		for key in VALID_KEYS:

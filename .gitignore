@@ -23,7 +23,8 @@ checkpoints/
 experiments/
 *.h5
 *.keras
-
+tests/
+test_of_weights.py
 # Logs
 *.log
 

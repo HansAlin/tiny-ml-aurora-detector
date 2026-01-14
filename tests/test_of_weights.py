@@ -1,11 +1,18 @@
 import h5py
 import numpy as np
+import os
+import json
 
+# Load meta_data
+EXPERIMENT_PATH = r"experiments\classifier_experiment_6"
+META_DATA_PATH = os.path.join(EXPERIMENT_PATH, "meta_data.json")
+with open(META_DATA_PATH, "r") as f:
+    meta_data = json.load(f)
 # ------------------------------------------------------------
 # CONFIG
 # ------------------------------------------------------------
-WEIGHTS_1 = r"experiments\classifier_experiment_2\model_final.weights.h5"
-WEIGHTS_2 = r"experiments\classifier_experiment_2\model_weights\Encoder_classifier_epoch_149.weights.h5"
+WEIGHTS_1 = os.path.join(EXPERIMENT_PATH, "model_final.weights.h5")
+WEIGHTS_2 = os.path.join(EXPERIMENT_PATH, "model_weights", "Encoder-Classifier_epoch_79.weights.h5")
 
 ROW_DIFF_EPS = 1e-12  # threshold for printing row diffs
 
@@ -60,11 +67,12 @@ for path in common:
     diff = a - b
     max_diff = np.max(np.abs(diff))
     mean_diff = np.mean(np.abs(diff))
-
+    if 'optimizer' in path:
+        continue
     print(f"{path}")
     print(f"  shape     : {a.shape}")
-    print(f"  max |Δ|   : {max_diff:.3e}")
-    print(f"  mean |Δ|  : {mean_diff:.3e}")
+    # print(f"  max |Δ|   : {max_diff:.3e}")
+    # print(f"  mean |Δ|  : {mean_diff:.3e}")
 
     # Row-by-row diagnostics for Dense kernels
     if is_dense_kernel(path, a):
@@ -80,12 +88,18 @@ for path in common:
 
     print()
 
-print("\n================ ONLY IN FILE 1 ================\n")
-for p in only_1:
-    print(p)
+# print("\n================ ONLY IN FILE 1 ================\n")
+# for p in only_1:
+#     print(p)
 
-print("\n================ ONLY IN FILE 2 ================\n")
-for p in only_2:
-    print(p)
+# print("\n================ ONLY IN FILE 2 ================\n")
+# for p in only_2:
+#     print(p)
 
 print("\nDone.")
+
+print("Meta data")
+print(f"Width layer 1: {meta_data['width_layer_1']}")
+print(f"Width layer 2: {meta_data['width_layer_2']}")
+print(f"Width last layer: {meta_data['width_last_layer']}")
+print(f"Latent size: {meta_data['latent_size']}")
