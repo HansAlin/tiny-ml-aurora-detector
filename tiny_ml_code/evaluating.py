@@ -114,6 +114,21 @@ class Evaluate():
 		if y_true is not None:
 			self.y_true = y_true
 
+		try:
+			if y_pred is None and self.meta_data is not None:
+				pred_path = os.path.join(self.meta_data.get("model_dir"), 'reconstructed_examples.npy')
+				self.y_pred  = np.load(pred_path)
+			if y_true is None and self.meta_data is not None:
+				original_path = os.path.join(self.meta_data.get("model_dir"), 'original_examples.npy')
+				self.y_true  = np.load(original_path)
+
+			if self.y_pred is not None and self.y_true is not None:
+				self.y_pred = self.y_pred.ravel()
+				self.y_true = self.y_true.ravel()
+		except Exception as e:
+			print(f"Could not load y_pred or y_true from meta_data path. Error: {e}")
+
+
 		fpr, tpr, thresholds = self.get_roc(y_pred=self.y_pred, y_true=self.y_true)
 		roc_auc, tpr_at_fpr, fpr_threshold, cut, real_fpr_value = self.get_cut(fpr, tpr, thresholds, fpr_threshold=fpr_threshold)
 		precision, recall, f1, cm = self.get_metrics(cut)
