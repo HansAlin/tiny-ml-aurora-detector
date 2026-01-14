@@ -98,13 +98,34 @@ where \(X\) is the original feature value, and \(\mu\) and \(\sigma\) are the me
 \section{Model development}
 Since the perpose of this project is to deploy deep-learning models on microcontrollers, the model architecture should be kept simple to reduce the computational cost. And for making prof of priciples a simple fully connected neural was created. \par
 Since the dataset contained a lot of unlabeled data and just a small fraction of labeld data and for that matter highly un balenced, a semi-supervised learning approach was considerd, which in this context means that the models have been trained on unsuperviced data first and than part of the model fine-tuned on the labeled data. \par
-This project follows to large extent the guidelines for that type of traing from \cite{geronHandsonMachineLearning}. The models are created by keras and the script describing the model creation and training is written in Python and can be found in the GitHub repository 'tiny_ml_code/models/FC_autoencoder.py' \cite{alinHansAlinTinymlauroradetector2026}
-\subsection{Model architecture}
+
+This project follows to large extent the guidelines for that type of training from \cite{geronHandsonMachineLearning}. The models are created by Keras and the script describing the model creation and training is written in Python and can be found in the GitHub repository 'tiny_ml_code/models/FC_autoencoder.py' \cite{alinHansAlinTinymlauroradetector2026}.
+\subsection{Model architecture Autoencoder}
 The model architecture used in this project is a simple fully connected neural network with the following layers:
 \begin{itemize}
 	\item Input layer: 8 neurons (one for each feature)
-	\item Hidden layer 1: With 
+	\item Encoder Hidden layer 1: Dense layer with 8 - 256 neurons, Leaky ReLU activation
+	\item Encoder Hidden layer 2: Dense layer with 8 - 128 neurons, Leaky ReLU activation
+	\item Encoder Latent layer: Dense layer with 2 - 64 neurons, Linear activation
+	\item Decoder Hidden layer 3: Dense layer with 8 - 128 neurons, Leaky ReLU activation
+	\item Decoder Hidden layer 4: Dense layer with 8 - 256 neurons, Leaky ReLU activation
+	\item Decoder Final layer: Dense layer with 8 neurons, Linear activation
+\end{itemize}
 
+Regarding the model functioning as a classifier the model inherits the encoder part from the autoencoder model and adds the following layers:
+
+\begin{itemize}
+	\item Classifier Hidden layer 3: Dense layer with 8 - 128 neurons, Leaky ReLU activation 
+	\item Classifier Last layer: Dense layer with 1 neuron, Sigmoid activation
+\end{itemize}
+
+\section{Training procedure}
+Two types of of classifying models were coinstructe and trained in this procjetc, one using only the labeled data and one using semi-supervised learning approach. \par
+\subsection{Semi-supervised learning}
+The semi-supervised learning approach involved two main steps, pretraining the autoencoder model on unlabeld data and fine tuning the model on labeled data.\par
+The autoencoder were able to train in 200 epochs but a callback with early stopping was used to monitor the validation loss with a patience of 10 epochs. When the model were trained the weights were saved. \par 
+The classifier model "Encoder-Classifier" inherith the same archteicture as the encoder part from the previously mentioned autoencoder but with additional classifier layers. The weights from the encoder part were loaded from the trained autoencoder model. \par
+Initially the weights from the encoder part were frozen as mentioned in \cite{geronHandsonMachineLearning} and the mdoel had the opurtunity to train for 200 epochs. However, the erlystopping callback prevented the model to get overfitted. When the first time in thsi classifiear training were completed, either from early stopping or when the model reache 200 epochs, the weights from the encoder part were unfrozen and the whole model were trained again for 200 epochs with early stopping. \par
 
 
 

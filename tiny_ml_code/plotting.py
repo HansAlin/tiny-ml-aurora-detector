@@ -77,7 +77,7 @@ class Plotting():
 		disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
 		disp.plot(ax=ax, cmap="Blues", values_format=".2f" if normalize else "d")
 
-		ax.set_title("Confusion Matrix")
+		ax.set_title(rf"Confusion Matrix for $\mathrm{{FPR}} < 10^{{{int(np.log10(threshold))}}}$")
 
 		save_dir = os.path.join(self.path, "plots")
 		os.makedirs(save_dir, exist_ok=True)
@@ -217,10 +217,10 @@ class Plotting():
 		ax.plot([1e-6, 1], [1e-6, 1], linestyle='--', color='gray')
 
 		ax.set_title(
-			f"ROC-curve\n"
-			rf"With $\mathrm{{FPR}} < 10^{{{int(np.log10(fpr_threshold))}}}$, cut = {cut:.2f}"
-			f"\n"
-			rf"Gives TPR: {tpr_at_fpr:.2f}"
+			f"ROC-curve"
+			# rf"With $\mathrm{{FPR}} < 10^{{{int(np.log10(fpr_threshold))}}}$, cut = {cut:.2f}"
+			# f"\n"
+			# rf"Gives TPR: {tpr_at_fpr:.2f}"
 		)
 		ax.set_xlabel("False Positive Rate")
 		ax.set_ylabel("True Positive Rate")
