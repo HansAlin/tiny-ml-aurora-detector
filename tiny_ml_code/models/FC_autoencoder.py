@@ -142,7 +142,7 @@ class Classifier(keras.Model):
 		self.output_size = output_size
  
 		self.last_hidden = keras.layers.Dense(width_last_layer, activation=activation)
-		self.final_hidden = keras.layers.Dense(1, activation='sigmoid')
+		self.final_hidden = keras.layers.Dense(output_size, activation='sigmoid')
 
 	def call(self, inputs):
 
@@ -205,7 +205,7 @@ class ModelBuilder():
 		elif model_type == 'autoencoder':
 			model = Autoencoder(width_layer_1=width_layer_1, width_layer_2=width_layer_2, activation=activation, latent_size=latent_size, features=features, )
 		elif model_type == 'classifier':
-			model = EncoderClassifier(width_layer_1=width_layer_1, width_layer_2=width_layer_2, width_last_layer=width_last_layer, activation=activation, features=8, latent_size=latent_size, output_size=output_size)
+			model = EncoderClassifier(width_layer_1=width_layer_1, width_layer_2=width_layer_2, width_last_layer=width_last_layer, activation=activation, features=features, latent_size=latent_size, output_size=output_size)
 		else:
 			raise ValueError(f"Unknown model type: {model_type}")
 		

@@ -220,20 +220,51 @@ class AuroraDatasetLoader:
 			raise TypeError(f"Time column {self.time_column} must be datetime dtype")
 
 
+
 class DictManager:
 	"""Simple dict wrapper with explicit load/save."""
-	def __init__(self, path=None, initial=None):
+
+	def __init__(self, path=None, initial=None, create_if_missing=False):
+		"""
+		Args:
+			path (str): Path to the JSON file.
+			initial (dict): Initial dictionary if file doesn't exist.
+			create_if_missing (bool): If True, create file with `initial` if it doesn't exist.
+		"""
 		self.path = path
 		self.data = initial or {}
 
 		if self.path is not None:
+			# Ensure parent directory exists
 			os.makedirs(os.path.dirname(self.path), exist_ok=True)
-			if os.path.exists(self.path):
-				try:
-					self.load_dict()
-				except Exception as e:
-					print(f"Error loading dict from {self.path}: {e}")
 
+			if os.path.exists(self.path):
+				# File exists → load it
+				self.load_dict()
+			else:
+				if create_if_missing:
+					# Create a new file with the initial data
+					self.save_dict()
+					print(f"File {self.path} did not exist. Created with initial data.")
+				else:
+					# File missing → raise an error
+					raise FileNotFoundError(f"File {self.path} does not exist.")
+
+	def load_dict(self):
+		"""Load data from JSON file."""
+		try:
+			with open(self.path, 'r') as f:
+				self.data = json.load(f)
+		except Exception as e:
+			raise RuntimeError(f"Error loading dict from {self.path}: {e}")
+
+	def save_dict(self):
+		"""Save current data to JSON file."""
+		try:
+			with open(self.path, 'w') as f:
+				json.dump(self.data, f, indent=4)
+		except Exception as e:
+			raise RuntimeError(f"Error saving dict to {self.path}: {e}")
 
 
 	def copy_dict(self, deep=False):
@@ -243,17 +274,6 @@ class DictManager:
 		return self.data.copy()
 
 
-	def load_dict(self):
-		"""Load dict from JSON file."""
-		with open(self.path, 'r') as f:
-			self.data =  json.load(f)
-
-	def save_dict(self, path=None):
-		"""Save dict to JSON file."""
-		if path is not None:
-			self.path = path
-		with open(self.path, 'w') as f:
-			json.dump(self.data, f, indent=4)
 
 	def __getitem__(self, key):
 		return self.data[key]

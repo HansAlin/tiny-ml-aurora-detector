@@ -40,7 +40,7 @@ class Train():
 				latent_size =   meta_data.get('latent_size'),
 				model_type =    meta_data.get('model_type'),
 				width_last_layer=meta_data.get('width_last_layer'),
-				output_size = meta_data.get('output_size')
+				output_size = meta_data.get('output_size',1)
 			)
 		
 		return model
@@ -255,9 +255,6 @@ class Train():
 
 		self.meta_data.save_dict()
 
-
-
-
 class PeriodicCheckpoint(keras.callbacks.Callback):
 	def __init__(self, save_dir, every_n_epochs=10, prefix="model"):
 		super().__init__()
@@ -285,13 +282,13 @@ if __name__ == "__main__":
 	parser.add_argument(
 		"--model_dir",
 		type=str,
-		default=r"/experiments/classifier_experiment_1", 
+		default=r"experiments/classifier_experiment_11", 
 		help="Directory to save model weights and outputs"
 	)
 
 	args = parser.parse_args()
 
-	meta_data_path = args.model_dir + '/meta_data.json'
+	meta_data_path = os.path.join(args.model_dir, "meta_data.json")
 
 	os.makedirs(os.path.dirname(meta_data_path), exist_ok=True)
 	os.makedirs(args.model_dir, exist_ok=True)
