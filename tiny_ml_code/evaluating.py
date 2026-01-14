@@ -20,7 +20,7 @@ class Evaluate():
 
 	def __init__(self, y_pred=None, y_true=None, meta_data_path=None, meta_data=None) -> None:
 		
-		
+		print("Initializing Evaluate class")
 
 		self.y_pred = y_pred
 		self.y_true = y_true
@@ -31,6 +31,11 @@ class Evaluate():
 			self.meta_data = DictManager(path=meta_data_path)
 		else:
 			self.meta_data = None
+
+		if self.meta_data is not None:
+			print(f"Loaded meta_data from {meta_data_path}")
+		else:
+			print("No meta_data provided")
 
 		try:
 			if y_pred is None and self.meta_data is not None:
@@ -43,6 +48,13 @@ class Evaluate():
 			if self.y_pred is not None and self.y_true is not None:
 				self.y_pred = self.y_pred.ravel()
 				self.y_true = self.y_true.ravel()
+
+			# Check if y_pred and y_true have been Loaded
+			if self.y_pred is not None and self.y_true is not None:
+				print(f"y_pred and y_true loaded successfully with shapes {self.y_pred.shape} and {self.y_true.shape}")
+			else:
+				print("y_pred or y_true not loaded.")
+			
 		except Exception as e:
 			print(f"Could not load y_pred or y_true from meta_data path. Error: {e}")
 
