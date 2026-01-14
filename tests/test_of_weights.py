@@ -4,7 +4,7 @@ import os
 import json
 
 # Load meta_data
-EXPERIMENT_PATH = r"experiments\classifier_experiment_6"
+EXPERIMENT_PATH = r"experiments\classifier_experiment_13"
 META_DATA_PATH = os.path.join(EXPERIMENT_PATH, "meta_data.json")
 with open(META_DATA_PATH, "r") as f:
     meta_data = json.load(f)
@@ -12,7 +12,7 @@ with open(META_DATA_PATH, "r") as f:
 # CONFIG
 # ------------------------------------------------------------
 WEIGHTS_1 = os.path.join(EXPERIMENT_PATH, "model_final.weights.h5")
-WEIGHTS_2 = os.path.join(EXPERIMENT_PATH, "model_weights", "Encoder-Classifier_epoch_79.weights.h5")
+WEIGHTS_2 = os.path.join(EXPERIMENT_PATH, "model_weights", "Encoder_Classifier_epoch_9.weights.h5")
 
 ROW_DIFF_EPS = 1e-12  # threshold for printing row diffs
 

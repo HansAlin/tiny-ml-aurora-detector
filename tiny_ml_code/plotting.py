@@ -27,12 +27,14 @@ class Plotting():
 		if y_pred is None:
 			pred_path = os.path.join(self.path, 'reconstructed_examples.npy')
 			self.y_pred = np.load(pred_path)
-
-
+			if self.y_pred is not None:
+				print(f"Loaded predictions from {pred_path}")
 
 		if y_true is None:
 			original_path = os.path.join(self.path, 'original_examples.npy')
 			self.y_true = np.load(original_path)
+			if self.y_true is not None:
+				print(f"Loaded true labels from {original_path}")
 
 	def update_font(self, font_size=11):
 		plt.rcParams.update({
@@ -250,10 +252,14 @@ class Plotting():
 		if self.y_pred is None:
 			pred_path = os.path.join(self.path, 'reconstructed_examples.npy')
 			self.y_pred = np.load(pred_path)
+			if self.y_pred is not None:
+				print(f"Loaded predictions from {pred_path}")
 
 		if self.y_true is None:
 			true_path = os.path.join(self.path, 'original_examples.npy')
 			self.y_true = np.load(true_path)
+			if self.y_true is not None:
+				print(f"Loaded true labels from {true_path}")
 
 		if not self.override_reshaping:
 			
