@@ -34,7 +34,6 @@ class Evaluate():
 
 		if self.meta_data is not None:
 			print(f"Loaded meta_data from {meta_data_path}")
-			print(self.meta_data.keys())
 		else:
 			print("No meta_data provided")
 

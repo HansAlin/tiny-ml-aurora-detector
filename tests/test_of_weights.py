@@ -3,103 +3,129 @@ import numpy as np
 import os
 import json
 
-# Load meta_data
-EXPERIMENT_PATH = r"experiments\classifier_experiment_13"
-META_DATA_PATH = os.path.join(EXPERIMENT_PATH, "meta_data.json")
-with open(META_DATA_PATH, "r") as f:
-    meta_data = json.load(f)
-# ------------------------------------------------------------
-# CONFIG
-# ------------------------------------------------------------
-WEIGHTS_1 = os.path.join(EXPERIMENT_PATH, "model_final.weights.h5")
-WEIGHTS_2 = os.path.join(EXPERIMENT_PATH, "model_weights", "Encoder_Classifier_epoch_9.weights.h5")
 
-ROW_DIFF_EPS = 1e-12  # threshold for printing row diffs
+for i in range(1,7):
+	# ------------------------------------------------------------
+	# PATHS
+	# ------------------------------------------------------------
+	BASE_PATH = "/content/drive/MyDrive/Colab Notebooks/tiny-ml-aurora-detector"
+	EXPERIMENT_PATH = os.path.join(BASE_PATH, "experiments", f"classifier_experiment_{i}")
 
-# ------------------------------------------------------------
-# HDF5 UTILITIES
-# ------------------------------------------------------------
-def collect_tensors(h5file):
-    tensors = {}
+	META_DATA_PATH = os.path.join(EXPERIMENT_PATH, "meta_data.json")
+	WEIGHTS_PATH = os.path.join(EXPERIMENT_PATH, "model_final.weights.h5")
 
-    def walk(group, prefix=""):
-        for k in group.keys():
-            item = group[k]
-            path = f"{prefix}/{k}"
-            if isinstance(item, h5py.Dataset):
-                tensors[path] = np.array(item)
-            else:
-                walk(item, path)
+	import h5py
 
-    walk(h5file)
-    return tensors
+	WEIGHTS_PATH = f"/content/drive/MyDrive/Colab Notebooks/tiny-ml-aurora-detector/experiments/classifier_experiment_{i}/model_final.weights.h5"
 
+	# with h5py.File(WEIGHTS_PATH, "r") as f:
+	#     def walk(group, prefix=""):
+	#         for k in group:
+	#             item = group[k]
+	#             path = f"{prefix}/{k}" if prefix else k
+	#             if isinstance(item, h5py.Dataset):
+	#                 print(path, item.shape)
+	#             elif isinstance(item, h5py.Group):
+	#                 walk(item, path)
 
-def is_dense_kernel(path, array):
-    return path.endswith("/kernel") and array.ndim == 2
+	#     walk(f)
 
+	# ------------------------------------------------------------
+	# LOAD META DATA
+	# ------------------------------------------------------------
+	with open(META_DATA_PATH, "r") as f:
+		meta = json.load(f)
 
-# ------------------------------------------------------------
-# MAIN
-# ------------------------------------------------------------
-with h5py.File(WEIGHTS_1, "r") as f1, h5py.File(WEIGHTS_2, "r") as f2:
+	features = meta["features"]
+	w1 = meta["width_layer_1"]
+	w2 = meta["width_layer_2"]
+	latent = meta["latent_size"]
+	w_last = meta["width_last_layer"]
+	out = meta.get("output_size", 1)
+	model_type = meta["model_type"]
 
-    t1 = collect_tensors(f1)
-    t2 = collect_tensors(f2)
+	# ------------------------------------------------------------
+	# EXPECTED KERNEL SHAPES
+	# ------------------------------------------------------------
+	expected_kernels = []
 
-paths_1 = set(t1)
-paths_2 = set(t2)
+	# Encoder
+	expected_kernels += [
+		(len(features), w1),
+		(w1, w2),
+		(w2, latent),
+	]
 
-common = sorted(paths_1 & paths_2)
-only_1 = sorted(paths_1 - paths_2)
-only_2 = sorted(paths_2 - paths_1)
+	# Classifier head
+	expected_kernels += [
+		(latent, w_last),
+		(w_last, out),
+	]
 
-print("\n================ COMMON TENSORS ================\n")
+	# ------------------------------------------------------------
+	# HDF5 UTILITIES
+	# ------------------------------------------------------------
+	def collect_dense_kernels(h5file):
+		kernels = {}
+		def walk(group, prefix=""):
+			for k in group:
+				item = group[k]
+				path = f"{prefix}/{k}" if prefix else k
+				# Only real layer kernels, ignore optimizer vars
+				if isinstance(item, h5py.Dataset) and len(item.shape) == 2 and not prefix.startswith("optimizer"):
+					kernels[path] = np.array(item)
+				elif isinstance(item, h5py.Group):
+					walk(item, path)
+		walk(h5file)
+		return kernels
 
-for path in common:
-    a = t1[path]
-    b = t2[path]
+	# ------------------------------------------------------------
+	# MAIN
+	# ------------------------------------------------------------
+	with h5py.File(WEIGHTS_PATH, "r") as f:
+		kernels = collect_dense_kernels(f)
 
-    if a.shape != b.shape:
-        print(f"[SHAPE MISMATCH] {path}: {a.shape} vs {b.shape}")
-        continue
+	found_shapes = [v.shape for v in kernels.values()]
+	print(len(found_shapes))
+	print(f"\n================    Model    {i}     ================\n")
+	print("\n================ FOUND DENSE KERNELS ================\n")
+	for path, arr in kernels.items():
+		print(f"{path}")
+		print(f"  shape: {arr.shape}")
 
-    diff = a - b
-    max_diff = np.max(np.abs(diff))
-    mean_diff = np.mean(np.abs(diff))
-    if 'optimizer' in path:
-        continue
-    print(f"{path}")
-    print(f"  shape     : {a.shape}")
-    # print(f"  max |Δ|   : {max_diff:.3e}")
-    # print(f"  mean |Δ|  : {mean_diff:.3e}")
+	print("\n================ EXPECTED SHAPES ====================\n")
+	for s in expected_kernels:
+		print(" ", s)
 
-    # Row-by-row diagnostics for Dense kernels
-    if is_dense_kernel(path, a):
-        row_norms = np.linalg.norm(diff, axis=1)
-        bad_rows = np.where(row_norms > ROW_DIFF_EPS)[0]
+	# # ------------------------------------------------------------
+	# # CONSISTENCY CHECK
+	# # ------------------------------------------------------------
+	missing = [s for s in expected_kernels if s not in found_shapes]
+	extra = [s for s in found_shapes if s not in expected_kernels]
 
-        if len(bad_rows) > 0:
-            print("  row diffs:")
-            for i in bad_rows[:10]:  # cap output
-                print(f"    row {i:4d}: ||Δ|| = {row_norms[i]:.3e}")
-        else:
-            print("  rows      : identical")
+	print("\n================ CONSISTENCY CHECK ==================\n")
 
-    print()
+	if not missing and not extra:
+		print("✅ Weights are structurally consistent with meta_data.json")
+	else:
+		if missing:
+			print("❌ Missing expected kernels:")
+			for s in missing:
+				print(" ", s)
+		if extra:
+			print("❌ Unexpected kernels found:")
+			for s in extra:
+				print(" ", s)
 
-# print("\n================ ONLY IN FILE 1 ================\n")
-# for p in only_1:
-#     print(p)
+	print("\nDone.\n")
 
-# print("\n================ ONLY IN FILE 2 ================\n")
-# for p in only_2:
-#     print(p)
-
-print("\nDone.")
-
-print("Meta data")
-print(f"Width layer 1: {meta_data['width_layer_1']}")
-print(f"Width layer 2: {meta_data['width_layer_2']}")
-print(f"Width last layer: {meta_data['width_last_layer']}")
-print(f"Latent size: {meta_data['latent_size']}")
+	# ------------------------------------------------------------
+	# META DATA SUMMARY
+	# ------------------------------------------------------------
+	print("Meta data summary:")
+	print(f"  Features         : {len(features)}")
+	print(f"  Width layer 1    : {w1}")
+	print(f"  Width layer 2    : {w2}")
+	print(f"  Latent size      : {latent}")
+	print(f"  Width last layer : {w_last}")
+	print(f"  Output size      : {out}")
