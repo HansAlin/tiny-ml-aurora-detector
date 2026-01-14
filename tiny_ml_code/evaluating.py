@@ -9,8 +9,8 @@ from tiny_ml_code.data_handler import DictManager
 from numpy.linalg import inv
 
 
-
-
+#'/experiments/classifier_experiment_1/meta_data.json'
+#'/experiments/classifier_experiment_1/meta_data.json
 class Evaluate():
 	"""This class takes care of all evaluating of, forexample the output from a Deep-Learning prediction
 		together with the original values.
@@ -34,6 +34,7 @@ class Evaluate():
 
 		if self.meta_data is not None:
 			print(f"Loaded meta_data from {meta_data_path}")
+			print(self.meta_data.keys())
 		else:
 			print("No meta_data provided")
 

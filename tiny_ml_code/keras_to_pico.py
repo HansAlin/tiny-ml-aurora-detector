@@ -94,14 +94,14 @@ class Converter():
 		model_builder = ModelBuilder()
 
 		model = model_builder.build_model(
-				width_layer_1 = self.meta_data_original.get('width_layer_1', 64),
-				width_layer_2 = self.meta_data_original.get('width_layer_2', 32),
-				activation =    self.meta_data_original.get('activation', 'relu'),
-				features =  len(self.meta_data_original.get('features', [])),
-				latent_size =   self.meta_data_original.get('latent_size', 2),
-				model_type =    self.meta_data_original.get('model_type', 'autoencoder'),
-				width_layer_last=self.meta_data_original.get('width_layer_last', 10),
-				output_size = self.meta_data_original.get('output_size', 1)
+				width_layer_1 = self.meta_data_original.get('width_layer_1'),
+				width_layer_2 = self.meta_data_original.get('width_layer_2'),
+				activation =    self.meta_data_original.get('activation'),
+				features =  len(self.meta_data_original.get('features')),
+				latent_size =   self.meta_data_original.get('latent_size'),
+				model_type =    self.meta_data_original.get('model_type'),
+				width_last_layer=self.meta_data_original.get('width_last_layer'),
+				output_size = self.meta_data_original.get('output_size')
 			)
 		
 		model.load_weights(weights_path)

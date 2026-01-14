@@ -33,14 +33,14 @@ class Train():
 	def create_network(self, meta_data):
 
 		model = self.mb.build_model(
-				width_layer_1 = meta_data.get('width_layer_1', 64),
-				width_layer_2 = meta_data.get('width_layer_2', 32),
-				activation =    meta_data.get('activation', 'relu'),
-				features =  len(meta_data.get('features', [])),
-				latent_size =   meta_data.get('latent_size', 2),
-				model_type =    meta_data.get('model_type', 'autoencoder'),
-				width_layer_last=meta_data.get('width_layer_last', 8),
-				output_size = meta_data.get('output_size', 1)
+				width_layer_1 = meta_data.get('width_layer_1'),
+				width_layer_2 = meta_data.get('width_layer_2'),
+				activation =    meta_data.get('activation'),
+				features =  len(meta_data.get('features')),
+				latent_size =   meta_data.get('latent_size'),
+				model_type =    meta_data.get('model_type'),
+				width_last_layer=meta_data.get('width_last_layer'),
+				output_size = meta_data.get('output_size')
 			)
 		
 		return model
@@ -285,7 +285,7 @@ if __name__ == "__main__":
 	parser.add_argument(
 		"--model_dir",
 		type=str,
-		default=r"experiments/classifier_experiment_1", 
+		default=r"/experiments/classifier_experiment_1", 
 		help="Directory to save model weights and outputs"
 	)
 
@@ -303,9 +303,9 @@ if __name__ == "__main__":
 		data_path=args.data_path
 	)
 
-	# train.create_dataset()
-	# train.create_callbacks(patience=10)
-	# train.train()
+	train.create_dataset()
+	train.create_callbacks(patience=10)
+	train.train()
 
 	if train.meta_data.get('model_type') != 'autoencoder':
 		# Evaluate only for autoencoder model!
