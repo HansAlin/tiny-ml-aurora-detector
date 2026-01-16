@@ -37,7 +37,7 @@ class Encoder(keras.Model):
 		return latent
 	
 class Decoder(keras.Model):
-	def __init__(self, width_layer_1=64, width_layer_2=32, activation='relu', input_size=2, output_size=8, ):
+	def __init__(self, width_layer_1=64, width_layer_2=32, activation='relu', input_size=2, output_size=8, last_activation=None ):
 		super().__init__()
 
 		self.input_size = input_size
@@ -46,7 +46,7 @@ class Decoder(keras.Model):
 		self.hidden1 = keras.layers.Dense(width_layer_2, activation=activation)
 		self.hidden2 = keras.layers.Dense(width_layer_1, activation=activation)
 
-		self.final_layer = keras.layers.Dense(self.output_size, activation=None)
+		self.final_layer = keras.layers.Dense(self.output_size, activation=last_activation)
 
 
 	def call(self, inputs):
@@ -72,7 +72,7 @@ class Decoder(keras.Model):
 		return output
 	
 class Autoencoder(keras.Model):
-	def __init__(self, width_layer_1=20, width_layer_2=10, activation='relu', features=8, latent_size=2, ):
+	def __init__(self, width_layer_1=20, width_layer_2=10, activation='relu', features=8, latent_size=2, last_activation='sigmoid' ):
 		super().__init__()
 
 		self.input_size = features
@@ -80,7 +80,7 @@ class Autoencoder(keras.Model):
 		self.latent_size = latent_size
 
 		self.encoder = Encoder(width_layer_1=width_layer_1, width_layer_2=width_layer_2, activation=activation, input_size=features, output_size=latent_size,)
-		self.decoder = Decoder(width_layer_1=width_layer_1, width_layer_2=width_layer_2, activation=activation, input_size=latent_size, output_size=features,)
+		self.decoder = Decoder(width_layer_1=width_layer_1, width_layer_2=width_layer_2, activation=activation, input_size=latent_size, output_size=features, last_activation=last_activation)
 
 	def call(self, inputs):
 
@@ -103,7 +103,7 @@ class Autoencoder(keras.Model):
 		return decoded
 	
 class EncoderClassifier(keras.Model):
-	def __init__(self, width_layer_1=20, width_layer_2=10, width_last_layer=10, activation='relu', features=8, latent_size=2, output_size=1):
+	def __init__(self, width_layer_1=20, width_layer_2=10, width_last_layer=10, activation='relu', features=8, latent_size=2, output_size=1, last_activation='sigmoid'):
 		super().__init__()
 
 		self.input_size = features
@@ -111,7 +111,7 @@ class EncoderClassifier(keras.Model):
 		self.latent_size = latent_size
 
 		self.encoder = Encoder(width_layer_1=width_layer_1, width_layer_2=width_layer_2, activation=activation, input_size=features, output_size=latent_size,)
-		self.classifier = Classifier(width_last_layer=width_last_layer, activation=activation, input_size=latent_size, output_size=output_size)
+		self.classifier = Classifier(width_last_layer=width_last_layer, activation=activation, input_size=latent_size, output_size=output_size, last_activation=last_activation)
 
 	def call(self, inputs):
 
@@ -135,14 +135,14 @@ class EncoderClassifier(keras.Model):
 
 
 class Classifier(keras.Model):
-	def __init__(self, width_last_layer=8, activation='relu', input_size=2, output_size=1):
+	def __init__(self, width_last_layer=8, activation='relu', input_size=2, output_size=1, last_activation='sigmoid'):
 		super().__init__()
 
 		self.input_size = input_size
 		self.output_size = output_size
  
 		self.last_hidden = keras.layers.Dense(width_last_layer, activation=activation)
-		self.final_hidden = keras.layers.Dense(output_size, activation='sigmoid')
+		self.final_hidden = keras.layers.Dense(output_size, activation=last_activation)
 
 	def call(self, inputs):
 
@@ -165,8 +165,8 @@ class Classifier(keras.Model):
 
 
 class ModelBuilder():
-	def __init__(self) -> None:
-		pass
+	def __init__(self, last_activation='sigmoid') -> None:
+		self.last_activation = last_activation
 
 	def wrapper_build_model(self, meta_data, compiled=False, weights_path=None):
 
@@ -203,9 +203,9 @@ class ModelBuilder():
 			input_size = latent_size
 			model = decoder_model
 		elif model_type == 'autoencoder':
-			model = Autoencoder(width_layer_1=width_layer_1, width_layer_2=width_layer_2, activation=activation, latent_size=latent_size, features=features, )
+			model = Autoencoder(width_layer_1=width_layer_1, width_layer_2=width_layer_2, activation=activation, latent_size=latent_size, features=features,  last_activation=self.last_activation)
 		elif model_type == 'classifier':
-			model = EncoderClassifier(width_layer_1=width_layer_1, width_layer_2=width_layer_2, width_last_layer=width_last_layer, activation=activation, features=features, latent_size=latent_size, output_size=output_size)
+			model = EncoderClassifier(width_layer_1=width_layer_1, width_layer_2=width_layer_2, width_last_layer=width_last_layer, activation=activation, features=features, latent_size=latent_size, output_size=output_size, last_activation=self.last_activation)
 		else:
 			raise ValueError(f"Unknown model type: {model_type}")
 		

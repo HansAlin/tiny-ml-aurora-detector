@@ -138,6 +138,7 @@ class DeepDataset(AuroraDatasetLoader):
 
 	def prepare_tf_datasets(self, supervised_learning=False, normalize=True, val_fraction=0.1, test_fraction=0.1, return_numpy=False):
 
+
 		data = self.load_processed_data(filename=self.data_path, filetype="pkl")
 
 		unsupervised_df, supervised_df = self.split_to_unsupervised_data(data=data)
@@ -266,26 +267,31 @@ class DeepDataset(AuroraDatasetLoader):
 
 	def save_subset(self, save_subset_path, X, y=None, n_samples=1000):
 
+		# Shuffle the data	
+		indices = np.arange(X.shape[0])
+		np.random.shuffle(indices)
+		X = X[indices]
+		if y is not None:
+			y = y[indices]
+
+
 		if y is None:
 			np.savez(save_subset_path, x=X[:n_samples])
 		else:
 			np.savez(save_subset_path, x=X[:n_samples], y=y[:n_samples])
 
-	def load_subset(self, saved_subset_path):
-		
+	def load_subset(self, saved_subset_path, ignore_labels=False):
 		data = np.load(saved_subset_path)
-
 		x = data["x"]
-		y = data["y"] if "y"in data else None
+		y = data["y"] if "y" in data else None
 
-		if y is None:
+		if y is None or ignore_labels:
 			ds = tf.data.Dataset.from_tensor_slices(x)
-			ds = ds.map(lambda X: (X, X))
 		else:
 			ds = tf.data.Dataset.from_tensor_slices((x, y))
-			
 
 		return ds
+
 
 
 	def split_train_validation(self, x_train, y_train, val_fraction=0.2, shuffle=True):
@@ -367,11 +373,22 @@ if __name__ == '__main__':
 			meta_data_path=r"experiments\experiment_2\meta_data.json"
 		)
 	save_subset_path = r"data\processed\subset_labeled.npz"
-	# dic = dataloader.prepare_tf_datasets( supervised_learning=False, normalize=True, val_fraction=0.1, test_fraction=0.1, return_numpy=True)
+	dic = dataloader.prepare_tf_datasets( supervised_learning=True, normalize=True, val_fraction=0.1, test_fraction=0.1, return_numpy=True)
+	np.savez(
+			save_subset_path,
+			X_val=dic['val'][0], y_val=dic['val'][1],
+			X_test=dic['test'][0], y_test=dic['test'][1]
+		)
 	# dataloader.save_subset(save_subset_path=save_subset_path, 
-	# 					X=dic['train'][0],
-	# 					y=dic['train'][0],
-	# 					n_samples=500)
-	representative_data = dataloader.load_subset(saved_subset_path=save_subset_path)
-	for x, y in representative_data.take(1):
-		print(x[:3])  # first 3 samples
+	# 					X=dic['train'],
+	# 					y=None,
+	# 					n_samples=10000)
+	# representative_data = dataloader.load_subset(saved_subset_path=save_subset_path)
+	# xes = []
+	# for x, y in representative_data.take(10000):
+	# 	xes.append(x.numpy())
+	
+	# mean = np.mean(np.vstack(xes), axis=0)
+	# std = np.std(np.vstack(xes), axis=0)
+
+	# print(mean, std)

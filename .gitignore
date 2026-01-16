@@ -9,6 +9,7 @@ __pycache__/
 .env
 .venv
 env/
+prune_env/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -52,3 +53,4 @@ test_of_weights.py
 *.bcf
 *.bib
 *.bbl-SAVE-ERROR
+*.bcf-SAVE-ERROR

@@ -92,4 +92,4 @@ if __name__ == "__main__":
 	evaluation_metrics = bdt_model.evaluate(cut_threshold=cut_threshold)
 	bdt_model.transfer_to_meta_data(evaluation_metrics)
 	plotting.plot_roc_curve(y_pred=bdt_model.y_prob, y_true=bdt_model.y_test, fpr_threshold=bdt_model.fpr_target, x_scale='linear', )
-	plotting.plot_confusion_matrix(normalize=True, y_pred=bdt_model.y_pred, y_true=bdt_model.y_test, threshold=cut_threshold)
+	plotting.plot_confusion_matrix(normalize=True, y_pred=bdt_model.y_pred, y_true=bdt_model.y_test, fpr_threshold=bdt_model.fpr_target, cut_threshold=cut_threshold)

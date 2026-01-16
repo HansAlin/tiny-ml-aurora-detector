@@ -24,17 +24,21 @@ class Plotting():
 		self.y_pred = None
 		self.y_true = None
 
-		if y_pred is None:
-			pred_path = os.path.join(self.path, 'reconstructed_examples.npy')
-			self.y_pred = np.load(pred_path)
-			if self.y_pred is not None:
-				print(f"Loaded predictions from {pred_path}")
+		try:
+			if y_pred is None:
+				pred_path = os.path.join(self.path, 'reconstructed_examples.npy')
+				self.y_pred = np.load(pred_path)
+				if self.y_pred is not None:
+					print(f"Loaded predictions from {pred_path}")
 
-		if y_true is None:
-			original_path = os.path.join(self.path, 'original_examples.npy')
-			self.y_true = np.load(original_path)
-			if self.y_true is not None:
-				print(f"Loaded true labels from {original_path}")
+			if y_true is None:
+				original_path = os.path.join(self.path, 'original_examples.npy')
+				self.y_true = np.load(original_path)
+				if self.y_true is not None:
+					print(f"Loaded true labels from {original_path}")
+
+		except Exception as e:
+			print(f"Could not load predictions or true labels during initialization: {e}")
 
 	def update_font(self, font_size=11):
 		plt.rcParams.update({
@@ -53,19 +57,19 @@ class Plotting():
 			self.plot_examples()
 			self.plot_latent()
 		else:
-			self.plot_confusion_matrix(threshold=fpr_threshold)
-			self.plot_roc_curve(fpr_threshold=fpr_threshold, x_scale='linear')
+			self.plot_confusion_matrix(y_pred=self.y_pred, y_true=self.y_true, fpr_threshold=self.meta_data['fpr_threshold'], cut_threshold=self.meta_data['cut_threshold'],)
+			self.plot_roc_curve(fpr_threshold=self.meta_data['fpr_threshold'], y_pred=self.y_pred, y_true=self.y_true, x_scale='linear')
 
 		self.history_plot()
 
 
-	def plot_confusion_matrix(self, normalize=True, labels = ["No Aurora", "Aurora"], font_size=11, figsize=(8,5), y_pred=None, y_true=None, threshold=0.5, prefix=''):
+	def plot_confusion_matrix(self, normalize=True, labels = ["No Aurora", "Aurora"], font_size=11, figsize=(8,5), y_pred=None, y_true=None, fpr_threshold=1e-4, cut_threshold=0.5, prefix=''):
 
 		self.update_font(font_size=font_size)
 
-		y_pred, y_true = self._load_predictions(None, None)
+		# y_pred, y_true = self._load_predictions(None, None)
 
-		y_pred = (y_pred >= threshold).astype(int)
+		y_pred = (y_pred >= cut_threshold).astype(int)
 
 		cm = confusion_matrix(
 			y_true,
@@ -77,12 +81,12 @@ class Plotting():
 		disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=labels)
 		disp.plot(ax=ax, cmap="Blues", values_format=".2f" if normalize else "d")
 
-		ax.set_title(rf"Confusion Matrix for $\mathrm{{FPR}} < 10^{{{int(np.log10(threshold))}}}$")
+		ax.set_title(rf"Confusion Matrix for $\mathrm{{FPR}} < 10^{{{int(np.log10(fpr_threshold))}}}$")
 
 		save_dir = os.path.join(self.path, "plots")
 		os.makedirs(save_dir, exist_ok=True)
 
-		save_path = os.path.join(save_dir, "confusion_matrix.png")
+		save_path = os.path.join(save_dir, f"{prefix}confusion_matrix.png")
 		fig.savefig(save_path)
 		if self.show_plots:
 			plt.show()
@@ -204,7 +208,7 @@ class Plotting():
 		
 		fig, ax = plt.subplots(figsize=figsize)
 
-		y_pred, y_true = self._load_predictions(y_pred, y_true)
+		#y_pred, y_true = self._load_predictions(y_pred, y_true)
 
 		fpr, tpr, thresholds = roc_curve(y_true, y_pred)
 
@@ -278,4 +282,4 @@ class Plotting():
 
 if __name__ == '__main__':
 	plotting = Plotting(meta_data_path=r'experiments\experiment_2\meta_data.json', show_plots=True)
-	plotting.plot_results()
+	plotting.plot_results_collection()

@@ -1,139 +1,544 @@
-\documentclass{report}  % Changed from 'article' to 'report'
-\usepackage{hyperref}
-\usepackage{tikz-cd}
-\usepackage{amssymb}
-\usepackage{titlesec}
-\usepackage{caption}
-\usepackage{subcaption}
+\documentclass[12pt,a4paper]{article} 
 \usepackage[utf8]{inputenc}
-\usepackage{amsmath}
-\usepackage{nameref}
-\usepackage{graphicx}
-% \usepackage{todonotes} 
-\usepackage[compat=1.1.0]{tikz-feynman}
-\usepackage[backend=biber,style=numeric-comp,]{biblatex}
-\usepackage{a4wide}
-\addbibresource{Tiny-ML.bib} %Imports bibliography file
+\usepackage{graphicx, amsmath, amssymb, booktabs, caption, subcaption}
+\usepackage{hyperref}
+\usepackage[backend=biber,style=numeric-comp]{biblatex}
+\addbibresource{Tiny-ML.bib}
 
-\title{Thesis}
+\title{Applying Deep Learning Models for Classifying Aurora Events}
 \author{Hans Alin}
 \date{\today}
 
 \begin{document}
+\maketitle
+
 \section{Introduction}
-The interset for aureora follows to some exdent the solarcykel which menas that the during large activits in the sun the probabilty for auriora vents increarses. And the incres possibilty for autora events pushes the inters amopng not scientific citisenst to step outsid in the cold and dark to se the aurora if we consider the borelis. % ref.
-The groving interst for aurora during solar-cykle paek activuty, does not only gives the oportynity for a the community to explore an amaizing color explosion in the night sky, but can also be the connection to a more scienfic aproch to the phenomene and an eager to learn more about the space weather and the sun-earth connection. \par
-In order to maximize the chances of observing aurora, a special designed aurora detector have been created \cite{alinAuroraDetectorAffordable2022}. This detector uses firstly light sensors to measure the light intensity in the sky, and secondly temperature and humidty the estimate cloud cover. An algorithm have been developed to combine the data from these sensors to provide an aurora probability index. 
+
+Auroral activity roughly follows the solar cycle: during periods of high solar activity, as indicated by an increased number of sunspots \cite{kvammenAuroralImageClassification2020}, the probability of observing aurora increases. Consequently, public interest in seeing the aurora, also rises during these periods. \par
+
+The growing interest in aurora during solar cycle peak activity not only offers the community the opportunity to explore an amazing colour explosion in the night sky, but can also serve as a gateway to a more scientific approach to the phenomenon and an eagerness to learn more about space weather and the sun-earth connection. \par
+
+In order to maximize the chances of observing aurora, a specially designed aurora detector has been created \cite{alinAuroraDetectorAffordable2022}. This detector first uses light sensors to measure light intensity in the sky, and secondly uses temperature and humidity to estimate cloud cover. An algorithm has been developed to combine the data from these sensors to provide an aurora probability index. 
+
+Similar work has been done by Nanjo et al. \cite{nanjoAutomatedAuroralDetection2022}, who used 128 x 128 pixel all-sky images from Tromsø to train a ResNet-50 model for broad aurora classification, distinguishing between clear-sky aurora, cloudy-sky aurora, and no aurora. Kvammen et al. \cite{kvammenAuroralImageClassification2020} used a similar approach with 3846 labeled 128 x 128 pixel images from an all-sky camera in Kiruna, training models such as AlexNet and ResNet. Their best model, a ResNet-50, achieved an F1-score of 0.95. While effective, these approaches require complex and expensive all-sky camera setups, making them unsuitable for the affordable aurora detector concept. \par
+
 \subsection{Deployment requirements on aurora detector}
-In the light of aurora detector a natural selection of deployment of the physical device would be in remote areas with low light pollution and minimal human activity. However, since the teh overall idea of the device is to alert neigbourging citizens that an aurora event is happening, the device should not be deployed in areas where no one lives. Therefore, the device should be able to handle various weather conditions, including frost, snow, rain, and arbtray artifical light at least to some extent. \par
-This restricts the posibilties of deployment locations to in side the urban areas or suburban areas where the device can be placed on rooftops or in antenna toweres. \par
-The main motivation for the project \cite{alinAuroraDetectorAffordable2022} was to create an affordable aurora detector that could be deployed in larger numbers close to populated areas to increase the chances of citizens observing aurora events. This means that both the cost of the device and the cost of deployment should be kept low. \par
-Considering the deployment cost, the device should be selfsustained in terms of power consumption, meaning that it should use a solar panel and a battery to store energy, this implies no extra cost for power supply. \par
-It is also consieder that device will have WiFi connection sicne that is a common feature in urban and suburban areas, this will enable the device to send alerts the community. \par
+Ideally, the aurora detector would be deployed in remote areas with low light pollution and minimal human activity. However, since its primary purpose is to alert local residents of aurora events, deployment in uninhabited areas is not practical. Consequently, the device must withstand various weather conditions, including frost, snow, rain, and moderate artificial light. \par
+
+Given the need to reach residents, deployment is limited to urban or suburban areas, where the device can be installed on rooftops or antenna towers. \par
+
+The main motivation for the project \cite{alinAuroraDetectorAffordable2022} was to create an affordable aurora detector that could be deployed in larger numbers close to populated areas to increase the chances of citizens observing aurora events. This means that both the device cost and deployment costs should be kept low. \par
+
+Considering the deployment cost, the device should be self-sustaining in terms of power consumption, meaning it should use a solar panel and a battery to store energy, which implies no extra cost for power supply. \par
+
+It is also assumed that the device will have a Wi-Fi connection, as this is a common feature in urban and suburban areas, enabling it to send alerts to the community. \par
 
 \subsection{Motivations for applying Deep-Learning model on Aurora Detector}
-The main motivation for applying deep-learning models to the aurora detector is to enahnce the detection of aurora events while keeping the false positive rate low. The current algorithm, while effective, have stille some issues when frost or snow is present on the sensor, leading to false positives. \par
-In \cite{sahaMachineLearningMicrocontrollerClass2022}, \cite{wardenTinymlMachineLearning2019} the point out the the advance of using edge Ai, e.i . deploying machine learning models on microcontrollers, to enable real-time data processing and decision-making directly on the device and the shortcomming. \par
-In \cite{situnayakeAIEdge2023} the menthon the limitation in bandwidth which might not be a big issue for the aurora detector, deployed in urban or suburban areas with WiFi connection, but still a point to consider. It have been shown that most of embedded device power consumtuin comes from the transfering of data \cite{karicSendLessMore2025a}. \par
-In \cite{wardenTinymlMachineLearning2019}  they emphesice the aspect of latency, which is a important factor for the aurora detector since the goal is to alert citizens in real-time when an aurora event is happening. Getting an allert a few minutes late might result in missing the event. \par
-Both \cite{sahaMachineLearningMicrocontrollerClass2022} and \cite{wardenTinymlMachineLearning2019} highlights the privacy aspect of edge AI, since data is processed locally on the device, there is less risk of sensitive information being exposed during data transmission. However, this is not a major consern regarding data for the aurora detector. \par
-Lastly the main motivtation for using deep-learning models on the aurora detector is the potential for the model to reject false positives caused by frost, snow, and other environmental factors, but still have an accuracy as good as or better than the current algorithm \cite{alinAuroraDetectorAffordable2022}. \par
+The main motivation for applying deep learning models to the aurora detector is to improve aurora event detection while keeping the false-positive rate low. The current algorithm, though effective, still produces false positives when frost or snow accumulates on the sensor. This occurs because frost can refract light from angles not accounted for by the detector’s design..\par
+
+In \cite{sahaMachineLearningMicrocontrollerClass2022}, \cite{wardenTinymlMachineLearning2019} highlight the advances of edge AI, i.e., deploying machine learning models on microcontrollers to enable real-time data processing and decision-making directly on the device, as well as its shortcomings. \par
+
+Situnayake \cite{situnayakeAIEdge2023} mentions bandwidth limitations, which are unlikely to pose a problem for aurora detectors deployed in urban or suburban areas with Wi-Fi, but remain a consideration. Most power consumption in embedded devices originates from data transfer \cite{karicSendLessMore2025a}."\par
+
+In \cite{wardenTinymlMachineLearning2019}, they emphasize latency, an important factor for the aurora detector, since the goal is to alert citizens in real time when an aurora event occurs. Getting an alert a few minutes late might result in missing the event. \par
+
+Both \cite{sahaMachineLearningMicrocontrollerClass2022} and \cite{wardenTinymlMachineLearning2019} highlight the privacy aspect of edge AI, since data is processed locally on the device, there is less risk of sensitive information being exposed during data transmission. However, this is not a major concern for the aurora detector data. \par
+
+Lastly, the main motivation for using deep-learning models on the Aurora detector is the potential to reject false positives caused by frost, snow, and other environmental factors while maintaining accuracy as good as, or better than, the current algorithm \cite{alinAuroraDetectorAffordable2022}. \par
 
 \section{Electronics overview}
-This section is fully described in \cite{alinAuroraDetectorAffordable2022} and here follows a short overweivew of the electronics used in the aurora detector.
+The full electronics setup is described in \cite{alinAuroraDetectorAffordable2022}. Here, a brief overview of the components used in the Aurora detector is provided.
+
 \subsection{Microcontroller}
-The current aurora detector uses an ESP-8266 deployed on a developer board from Wemos, Wemos D1 MINI. The microcontroller is used to read data from the sensors, process the data using the aurora detection algorithm, send the raw data and aurora probability index to a server via WiFi. The only up and running device is powered by a 5V power supply continously. \par
-Since the goal is to deploy deep-learning models on the aurora detector, the microcontroller must be replaced by a more powerful one, capable of running the deep-learning models. The device considerd in this project is a Raspberry Pi Pico W, which is a microcontroller with WiFi capabilities and enough processing power to run deep-learning models using TensorFlow Lite for Microcontrollers. \par
+
+The current aurora detector uses an ESP-8266 on a Wemos D1 MINI developer board. The microcontroller reads sensor data, processes it using the aurora detection algorithm, and sends the raw data and aurora probability index to a server via WiFi. The operational device is continuously powered by a 5V supply. \par
+
+Since the goal is to deploy deep-learning models on the Aurora detector, the microcontroller must be replaced with a more powerful one capable of running them. The device considered in this project is a Raspberry Pi Pico W, a microcontroller with WiFi and enough processing power to run deep learning models using TensorFlow Lite for Microcontrollers. \par
+
 \subsection{Light sensor}
-There are two TSL2591 lightsensors deployed on the aurora detetcter. In front of one of the sensors a lulty layer interference filter is applyd filtering freequncies close to 557 nm (green), whcich is the most prominent frequncy emitted during aurora events. The sensorsn returns values between 0-65535, in given gain, representing the light intensity measured by the sensor, from two different channels with slightly different spectral responses, one more agaibt the IR spectrum and one closer to the visual spectrum. \par
+The aurora detector uses two TSL2591 light sensors. One sensor is equipped with a multilayer interference filter that selectively transmits wavelengths near 557 nm (green), the most prominent auroral emission. The sensors provide digital readings from 0 to 65,535 (depending on gain) representing measured light intensity. Each sensor has two channels with distinct spectral responses: one channel is more sensitive to infrared, while the other primarily responds to visible light.\par
+
 \subsection{Infrared thermometer}
-The infrared thermometer is a MLX90614 which is used to measure the "temperature" of the sky. The basic idea behind the sensor is that a clear sky will have a lower temperature compared to a cloudy sky, since clouds emit infrared radiation. The ssensor returns a temperature value in celsius between in floating point representation. \par
+The MLX90614 infrared thermometer measures the effective radiative temperature of the sky. A clear sky appears cooler than a cloudy sky because clouds emit more infrared radiation. The sensor reports temperature in degrees Celsius as floating-point values.\par
+
 \subsection{Humidity and temperature sensor}
-The humidity and temperature sensor is a DHT22 which is used to measure the ambient temperature and humidity. The main purpose of this sensor is that the values obtained can be used to calculate for a given humidty and temperature what the clear sky temperature should be. This can then be compared to the measured sky temperature from the infrared thermometer to estimate cloud cover.  
+The DHT22 sensor measures ambient temperature and humidity. These readings are used to estimate the expected clear-sky temperature under the current conditions, which can then be compared with the infrared thermometer's measurement to estimate cloud cover.
 
 \section{Data collection and preprocessing}
-The data collected for this project was conducted between 2024-12-01 and 2025-11-30 from a device deployed in Mora , Sweden (61.0°N, 14.5°E). The data is collected from a poblic avalaiable Thingspeak instance \cite{AuroraDetectorThingSpeak}, eventhough administartor access is required to download the full dataset. \par
-The raw dataset contains the following feautures:
 
-created_at: Timestamp of when the data was recorded.
-entry_id: Unique identifier for each data entry.
-Field 1: Light intensity from the filtered TSL2591 sensor (green light).
-Field 2: Light intensity from the unfiltered TSL2591 sensor.
-Field 3: Calculated on microcontroller, clear sky value based on data from MLX90614 and DHT22
-Field 4: Calculated on microcontroller, aurora points ~0-20 based on an algorithm combining data from all sensors.
-Field 5: Temperature from DHT22 sensor.
-Field 6: Humidity from DHT22 sensor.
-Field 7: Sky temperature from MLX90614 sensor.
-Field 8: The IR-channel from the TSL2591 sensor without a filter.
+The data for this project were collected between 1 December 2024 and 30 November 2025 using an instrument deployed in Mora, Sweden (61.0°N, 14.5°E). The dataset is available via a public ThingSpeak instance \cite{AuroraDetectorThingSpeak}; however, administrative access is needed to download the full dataset. Table \ref{tab:dataset_features} provides a summary of the raw data features.\par
 
-Since the data had an median sampling rate of 1/15 Hz, the the full year data contaned approximately 2 million samples. To save some computational power a algrothm was applied to calculate if its day or night that takes current date time and location into account. This algorith is currently operationg as an veto on the current aurora device, but this information is not sent to Thingspeak. This alogrithm was applied to the full dataset to filter out day-time samples, since visuable aurora events only occur during the dark hoyurs this reduced the data set by approximatöy half. \par 
+\begin{table}[t]
+	\centering
+	\caption{Overview of features contained in the raw dataset and their physical interpretation.}
+	\label{tab:dataset_features}
+	\begin{tabular}{lll}
+	\toprule
+	\textbf{Feature} & \textbf{Description} & \textbf{Sensor / Source} \\
+	\midrule
+	Timestamp (\texttt{created\_at}) &
+	Time at which the data point was recorded &
+	System clock \\
+	
+	Entry ID (\texttt{entry\_id}) &
+	Unique identifier for each data record &
+	Data acquisition system \\
+	
+	Green-channel light intensity &
+	Light intensity measured through a green-pass filter &
+	TSL2591 (filtered) \\
+	
+	Broadband light intensity &
+	Unfiltered visible light intensity &
+	TSL2591 (unfiltered) \\
+	
+	Clear-sky reference value &
+	Estimated clear-sky brightness computed onboard &
+	MLX90614 + DHT22 \\
+	
+	Aurora activity index &
+	Aurora detection score (approximately 0- -20), computed onboard &
+	Multi-sensor algorithm \\
+	
+	Ambient temperature &
+	Air temperature measurement &
+	DHT22 \\
+	
+	Relative humidity &
+	Ambient relative humidity measurement &
+	DHT22 \\
+	
+	Sky temperature &
+	Infrared sky temperature measurement &
+	MLX90614 \\
+	
+	Infrared light intensity &
+	Infrared-channel light intensity &
+	TSL2591 (IR channel) \\
+	\bottomrule
+	\end{tabular}
+	\end{table}
+	
 
-To capture frost add on and frost removal two additional features were added to the data set. Since humidity along side with the temperature device capture to large extend the posiblity for frost to occur, a new feature called "Rolling Mean Temperature (C)" and "Rolling Mean Humidity (\%)" where added to the dataset. The rolling mean was calculated using a window size of 20 minutes with the previous 20 minutes data. Endpoints were handled such that only samples within a full window were considered. The idea was that these two values could help the model to learn when frost is likely to occur and when it is likely to melt away. \par
+Since the data had a median sampling rate of 1/15 Hz, the full-year dataset contained approximately 2 million samples. To save computational power, an algorithm was used to determine whether it is day or night, taking the current date, time, and location into account. This algorithm is currently operating as a veto on the current Aurora device, but this information is not sent to Thingspeak. This algorithm was applied to the full dataset to filter out daytime samples, since visible aurora events only occur during the dark hours. This reduced the dataset by approximately half. \par 
 
-Since in this project goal is to apply deep-learning models on the aurora detector, it was considerd that most of the precalculations done on the microcontroller should be avoided, to let the model learn directly from the raw sensor data. Therefore, only the following features were used for training the models:
+To capture frost add-on and frost removal, two additional features were added to the data set. Since humidity, along with temperature, argely captures the likelihood of frost. A new feature called "Rolling Mean Temperature (C)" and "Rolling Mean Humidity (\%)" was added to the dataset. The rolling mean was calculated using a 20-minute window, with the previous 20 minutes of data. Endpoints were handled such that only samples within a full window were considered. The idea was that these two values could help the model learn when frost is likely to occur and when it is likely to melt. \par
 
-Filter 557nm, Light intensity from the filtered TSL2591 sensor (green light).
-No filter,Light intensity from the unfiltered TSL2591 sensor.
-Temperature (C), Temperature from DHT22 sensor.
-Humidity (\%), Humidity from DHT22 sensor.
-Sky Temperature (C), Sky temperature from MLX90614 sensor.
-IR, The IR-channel from the TSL2591 sensor without a filter.
-Rolling Mean Temperature (C), Rolling Mean Temperature (C) over 20 minutes.
-Rolling Mean Humidity (\%), Rolling Mean Humidity (\%) over 20 minutes.
+Since this project applies deep learning models to the aurora detector, it was considered that most of the precalculations performed on the microcontroller should be avoided to let the model learn directly from the raw sensor data. Therefore, only the features seen in table \ref{tab:processed_features} were used for training the models.
+
+\begin{table}[t]
+	\centering
+	\caption{Overview of measured and derived features used for model input after preprocessing.}
+	\label{tab:processed_features}
+	\begin{tabular}{lll}
+	\toprule
+	\textbf{Feature} & \textbf{Description} & \textbf{Sensor / Computation} \\
+	\midrule
+	Green-channel light intensity &
+	Light intensity measured through a 557\,nm green-pass filter &
+	TSL2591 (filtered) \\
+	
+	Broadband light intensity &
+	Unfiltered visible light intensity &
+	TSL2591 (unfiltered) \\
+	
+	Ambient temperature &
+	Air temperature measurement (°C) &
+	DHT22 \\
+	
+	Relative humidity &
+	Ambient relative humidity (\%) &
+	DHT22 \\
+	
+	Sky temperature &
+	Infrared sky temperature measurement (°C) &
+	MLX90614 \\
+	
+	Infrared light intensity &
+	Infrared-channel light intensity &
+	TSL2591 (IR channel) \\
+	
+	Rolling mean temperature &
+	20-minute rolling average of ambient temperature (°C) &
+	Derived from DHT22 \\
+	
+	Rolling mean humidity &
+	20-minute rolling average of relative humidity (\%) &
+	Derived from DHT22 \\
+	\bottomrule
+	\end{tabular}
+	\end{table}
+	
 
 \subsection{Labeling strategy}
-From observations between 2024-12-01 and 2025-11-30 there were in total 8 aurora events visible from the deployment location verified by observer over 8 different dates. One verified event with no aurora, eventhogh the algorithm on the microcontroller indicated a high aurora probability, was also observed. \par
-To label the data, a time window sweeping over the data from beginning of considered aurora event to end of event was applied. The time conseiderd was between 2 and 6 hours. The windows was sweeped over the data with in the consederd time at one verified dates and based on visual inspection of the light sensor with filter at 557nm. Most of the data points including a value from 557 nm sensor having a larger value than 3 was considered as aurora event. The threshold value of 3 was chosen based on visual inspection of the data from all verified aurora events. \par
-Addinal labeling was done for the known non-aurora event with the same priciples mentioned previoulsy. \par
-Moreover, 5 dates with high aurora points from the microcontroller algorithm, but not confirmed by obserer, where also consederd. Similar procedure were applied as above, but in order to avoid mislabeling of aurora events, a check of the magentometer located in Kiruna and Lyksele was used to varify the aurora event. Only those events with high magnetometer activity, and aurora points larger than 3 was considerd as aurora event. \par
+
+From observations between 2024-12-01 and 2025-11-30, there were a total of 8 aurora events visible from the deployment location, verified by the observer on 8 different dates. One verified event with no aurora, although the microcontroller's algorithm indicated a high aurora probability, was also observed. \par
+
+To label the data, a time window was swept over the data from the beginning to the end of the considered aurora event. The time considered was between 2 and 6 hours. The windows were swept over the data within the considered time at a single verified date, and the light sensor was visually inspected with a filter at 557nm. Most of the data points, including a value from a 557 nm sensor having a larger value than 3, were considered as an aurora event. The threshold value of 3 was chosen based on visual inspection of the data from all verified aurora events. \par
+
+Additional labelling was performed for the known non-aurora event using the same principles previously mentioned. \par
+
+Moreover, 5 dates with high aurora points from the microcontroller algorithm, but not confirmed by the observer, were also considered. Similar procedures were applied as above, but to avoid mislabeling of aurora events, magnetometer data from Kiruna and Lyksele were used to verify the aurora event. Only those events with high magnetometer activity, and aurora points larger than 3 were considered as aurora events. \par
 
 \subsection{Data summary}
-After filtering out day-time samples and applying the labeling strategy, the final dataset used for training and evaluating the deep-learning models contained approximately 1.8 M samples with unlabeled data and approximately 14,000 labeled samples, where around 13,000 samples were labeled as non-aurora and around 1,000 samples were labeled as aurora. This indicates a significant class imbalance, with non-aurora samples vastly outnumbering aurora samples. \par
-Before training with data a normalization of the data was applyed using the mean and standard deviation caluclated from the training set. The normalization was done using the formula:
-\[ 
-X_{norm} = \frac{X - \mu}{\sigma}	
-\]
+
+After filtering out daytime samples and applying the labelling strategy, the final dataset used for training and evaluating the deep-learning models contained approximately 1.8 M unlabeled samples and approximately 14,000 labelled samples, with around 13,000 labelled as non-aurora and around 1,000 labelled as aurora. This indicates a significant class imbalance, with non-aurora samples vastly outnumbering aurora samples. \par
+
+Before training with the data, data normalization was applied using the mean and standard deviation calculated from the training set. The normalization was done using the formula:
+
+$$
+X_{norm} = \frac{X - \mu}{\sigma}
+$$
+
 where \(X\) is the original feature value, and \(\mu\) and \(\sigma\) are the mean and standard deviation of the feature in the training set, respectively. 
 
 \section{Model development}
-Since the perpose of this project is to deploy deep-learning models on microcontrollers, the model architecture should be kept simple to reduce the computational cost. And for making prof of priciples a simple fully connected neural was created. \par
-Since the dataset contained a lot of unlabeled data and just a small fraction of labeld data and for that matter highly un balenced, a semi-supervised learning approach was considerd, which in this context means that the models have been trained on unsuperviced data first and than part of the model fine-tuned on the labeled data. \par
+Because this project aims to deploy deep learning models on microcontrollers, the architecture was designed to be simple to minimize computational cost. As a proof of concept, a fully connected neural network was implemented.\par
 
-This project follows to large extent the guidelines for that type of training from \cite{geronHandsonMachineLearning}. The models are created by Keras and the script describing the model creation and training is written in Python and can be found in the GitHub repository 'tiny_ml_code/models/FC_autoencoder.py' \cite{alinHansAlinTinymlauroradetector2026}.
+The dataset contains mostly unlabeled data, about 20 times more than the labeled samples, and the labeled portion is highly imbalanced, with the majority of samples corresponding to non-aurora events. To handle this, a semi-supervised learning approach was adopted: the models were first trained on the unlabeled data in an unsupervised manner, and then fine-tuned using the labeled samples. \par
+
+
+
+This project largely follows the guidelines for that type of training from \cite{geronHandsonMachineLearning}. The models are created by Keras, and the script describing the model creation and training is written in Python and can be found in the GitHub repository "tiny\_ml\_code/models/FC\_autoencoder.py" \cite{alinHansAlinTinymlauroradetector2026}.
+
 \subsection{Model architecture Autoencoder}
-The model architecture used in this project is a simple fully connected neural network with the following layers:
+The autoencoder is a fully connected neural network with the following structure:
 \begin{itemize}
 	\item Input layer: 8 neurons (one for each feature)
-	\item Encoder Hidden layer 1: Dense layer with 8 - 256 neurons, Leaky ReLU activation
-	\item Encoder Hidden layer 2: Dense layer with 8 - 128 neurons, Leaky ReLU activation
-	\item Encoder Latent layer: Dense layer with 2 - 64 neurons, Linear activation
-	\item Decoder Hidden layer 3: Dense layer with 8 - 128 neurons, Leaky ReLU activation
-	\item Decoder Hidden layer 4: Dense layer with 8 - 256 neurons, Leaky ReLU activation
+	\item Encoder Hidden layer 1: Dense layer with 16 to 512 neurons, Leaky ReLU activation
+	\item Encoder Hidden layer 2: Dense layer with 8 to 256 neurons, Leaky ReLU activation
+	\item Encoder Latent layer: Dense layer with 2 to 64 neurons, Linear activation
+	\item Decoder Hidden layer 3: Dense layer with 8 to 256  neurons, Leaky ReLU activation
+	\item Decoder Hidden layer 4: Dense layer with 16 to 512 neurons, Leaky ReLU activation
 	\item Decoder Final layer: Dense layer with 8 neurons, Linear activation
 \end{itemize}
 
-Regarding the model functioning as a classifier the model inherits the encoder part from the autoencoder model and adds the following layers:
+To use the model as a binary classifier, the encoder from the autoencoder is retained, and the following layers are added:
 
 \begin{itemize}
-	\item Classifier Hidden layer 3: Dense layer with 8 - 128 neurons, Leaky ReLU activation 
-	\item Classifier Last layer: Dense layer with 1 neuron, Sigmoid activation
+
+    \item Classifier Hidden layer 3: Dense layer with 8 - 128 neurons, Leaky ReLU activation 
+
+    \item Classifier Last layer: Dense layer with 1 neuron, Sigmoid activation
+
 \end{itemize}
 
+Note that in the final layer, a sigmoid activation is used, since the model is a binary classifier and is supposed to return a probability between 0 and 1. However, this is only valid for the unquantized models.\par
+A summary of the models and theri layers can be seen in Figure \ref{fig:model_architecture}.
+
+\begin{table}[t]
+    \centering
+    \caption{Neural network architecture configurations for supervised and semi-supervised models. Each row corresponds to a matched model pair sharing the same architecture.}
+    \label{tab:model_architectures}
+
+    \begin{tabular}{lcccc}
+        \toprule
+        \textbf{Model pair} &
+        \textbf{Width L1} &
+        \textbf{Width L2} &
+        \textbf{Latent size} &
+        \textbf{Width last} \\
+        \midrule
+        Semi-Supervised 1 / Supervised 6  & 16  & 8   & 2  & 8   \\
+        Semi-Supervised 2 / Supervised 6  & 32  & 16  & 4  & 16  \\
+        Semi-Supervised 3 / Supervised 7  & 64  & 32  & 8  & 32  \\
+        Semi-Supervised 4 / Supervised 8  & 128 & 64  & 16 & 64  \\
+        Semi-Supervised 5 / Supervised 9  & 256 & 128 & 32 & 128 \\
+        Semi-Supervised 6 / Supervised 10 & 512 & 256 & 64 & 256 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+
 \section{Training procedure}
-Two types of of classifying models were coinstructe and trained in this procjetc, one using only the labeled data and one using semi-supervised learning approach. \par
+Two classification models were constructed and trained in this project: one using only labeled data (supervised learning) and one using a semi-supervised learning approach.\par
+
+For both approaches, the Adam optimizer was used with an initial learning rate of $10^{-3}$. For the semi-supervised approach, the learning rate was reduced during the fine-tuning phase. A batch size of 32 samples was used for training both models. \par
+The full training scripts are available in the GitHub repository "tiny_ml_code/train.py".
+
 \subsection{Semi-supervised learning}
-The semi-supervised learning approach involved two main steps, pretraining the autoencoder model on unlabeld data and fine tuning the model on labeled data.\par
-The autoencoder were able to train in 200 epochs but a callback with early stopping was used to monitor the validation loss with a patience of 10 epochs. When the model were trained the weights were saved. \par 
-The classifier model "Encoder-Classifier" inherith the same archteicture as the encoder part from the previously mentioned autoencoder but with additional classifier layers. The weights from the encoder part were loaded from the trained autoencoder model. \par
-Initially the weights from the encoder part were frozen as mentioned in \cite{geronHandsonMachineLearning} and the mdoel had the opurtunity to train for 200 epochs. However, the erlystopping callback prevented the model to get overfitted. When the first time in thsi classifiear training were completed, either from early stopping or when the model reache 200 epochs, the weights from the encoder part were unfrozen and the whole model were trained again for 200 epochs with early stopping. \par
+The semi-supervised learning procedure involved two main steps, pretraining an autoencoder on the unlabeled data, followed by fine-tuning the encoder-classifier model on labeled data.\par
+
+The autoencoder was trained for up to 200 epochs with an early stopping callback monitoring the validation loss and a patience of 10 epochs. The trained weights were saved for subsequent use.
+
+The encoder-classifier model inherits the encoder architecture from the pretrained autoencoder and adds classifier layers. Initially, the encoder weights were frozen, and only the classifier layers were trained for up to 200 epochs with early stopping, preventing overfitting. After this first training phase, the encoder weights were unfrozen, and the entire model was retrained for up to 200 epochs with early stopping and a reduced learning rate of $10^{-4}$. \par
+
+\subsection{Supervised learning}
+In the supervised learning approach, the encoder-classifier model was trained directly on the labeled data without any pretraining. All weights were trainable from scratch, and the model was trained for up to 200 epochs with early stopping, using a patience of 10 epochs to monitor the validation loss. The architecture was identical to that used in the semi-supervised approach.
+
+\section{Quantization and preparing model for deployment}
+After training, the model was prepared for deployment through size reduction and int8 quantization using Keras and TensorFlow Lite for Python. The procedure followed the methodology described in \cite{iodiceTinyMLCookbookCombine2022}.\par
+
+First, the trained Keras model and its weights were saved. The tf.lite.TFLiteConverter utility was then used to create a converter object. During preliminary testing, it was observed that the quantized model had difficulty handling extreme output values, so the original sigmoid activation in the final layer was omitted.\par
+
+% To enable int8 quantization, a representative dataset of 1,000 randomly sampled examples from the training set was provided to the converter. The optimization setting tf.lite.Optimize.DEFAULT was applied, instructing the converter to quantize the model to int8 precision. The operator set tf.lite.OpsSet.TFLITE_BUILTINS_INT8 was specified, and the input and output data types were explicitly set to int8 (tf.int8)\par
+
+% The code for quantizing the models is available in the GitHub repository: tiny_ml_code/keras_to_pico.py, and can be executed via tiny_ml_code/get_tiny_models.ipynb \cite{alinHansAlinTinymlauroradetector2026}.\par
+
+\subsection{Computational and Electrical Power}
+
+% To estimate the flash memory requirements for the model during inference, the following formula is used: 
+% \[
+% Model size  =  $n_{params} \times X$ [\text{bytes}],
+% \]
+where $n_{params}$ is the number of parameters in the model and $X$ is the size of each parameter in bytes. For an int8-quantized model, each parameter takes 1 byte, whereas in the original float32 models (unquantized), each parameter takes 4 bytes. This was the internal Keras calculation used to estimate the model's storage size. \par
+
+To estimate RAM usage during inference, the number of tensor elements in each layer multiplied by the size, in bytes, of each element was calculated and summed across all layers in the model. This gives an estimate of the RAM required during inference. \par
+
+To get en estime of the inference time on the Raspberry Pi Pico W, it was assumed that the microcontrollers, that have a stated clock speed of 133 MHz \cite{raspberrypifoundationRaspberryPiPico}, can perform one operation per clock cycle, which gives the estimated inference time equal to:
+\[ 
+t_{inference} = \frac{MACs}{133\MHz} [s],
+\]
+where MACs is the number of multiply and addion operations required for a single inference. \par
+
+The energy required was estimated by multiplying the Raspberry Pi Pico W's operating power of 100 mW \cite{raspberrypifoundationRaspberryPiPico} by the estimated inference time. Note that the citation is to a Raspberry Pi Pico and not to a Raspberry Pi Pico W.
+
+\section{Results}
+
+Since we are most interested in minimizing false positives and still detecting as many auroral events as possible, the main metric used to evaluate the models was the F1-score. Additionally, we would like a model that, in principle, can reject all false positives, meaning we would like a high true positive rate (TPR) at a low false positive rate (FPR). Here, we set the limit to FPR < $10^{-4}$, meaning that we accept one false positive for every 10\,000 non-aurora events. \par
+
+The choice of FPR limit is rather arbitrary, but considering that the detector will generate an event every 15th second on average during the night, this would result in roughly 1 event every 4th night. We also report the TPR corresponding to FPR < $10^{-4}$.par
+
+\subsection{Semi-Supervised models}
+
+The performance of the semi-supervised models is shown in Figure \ref{fig:confusion_matrices}, which displays the confusion matrices for the semi-supervised models and their quantized counterparts. \par One can see that for all the models, the quantized model has a lower TPR than the corresponding unquantized model except for the smallest model (Experiment 2). \par
+
+In Table \ref{tab:quantized_results}, one can see that the performance regarding F1-score is highest for Semi-Supervised 4 with 0.24, and the highest TPR at FPR < $10^{-4}$ is also for Semi-Supervised 4 with 0.13. \par
+
+In general, quantization reduces TPR, and the performance drop is more pronounced for larger models.\par
+
+\subsection{Supervised models}
+
+The performance of the supervised learning models is shown in Figure \ref{fig:confusion_matrices_6_8}. The confusion matrices for the supervised models and their quantized counterparts are shown, and the overall pattern follows the semi-supervised models. \par
+
+In Table \ref{tab:quantized_results}, one can see that the highest F1-score is for Supervised 10 with 0.24, and the highest TPR at FPR < $10^{-4}$ is for the quantized models 6, 7, and 10. \par
+
+There are no significant differences between Semi-supervised and supervised learning in terms of performance. In general, quantization reduces the F1-score, with a larger drop for the semi-supervised models than for the supervised models. Regarding TPR at FPR < $10^{-4}$, quantization decreases TPR for all semi-supervised models except one, while it increases TPR for the supervised models.\par
 
 
 
+\subsection{Computational and energy constraints}
+
+In Table \ref{tab:quantized_results}, one can see the computational and energy requirements for all the quantized models. Both the flash and RAM requirements increase with model size, as expected and are well within the limitations on the Raspberry Pi Pico  with 2M QSPI Flash \cite{raspberrypifoundationRaspberryPiPico} and 256K \cite{oliveiraInternetIntelligentThings2024}.\par
+
+Regarding the extra energy the microcontroller needs, we see that the largest model will need ~4000 mAh per month to cover the usual operations. This is based on the assumption that an inference happens every 15th second during the night and is an upper bound estimate for continuous operation.\par
 
 
 
+\begin{figure}[t]
+    \centering
+
+    % Row 1
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/classifier_experiment_2/plots/confusion_matrix.png}
+        \caption{Semi-Supervised 1}
+    \end{subfigure}%
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/tiny_ml_classifier_experiment_2/plots/confusion_matrix.png}
+        \caption{Quantized 1}
+    \end{subfigure}
+
+    \medskip
+
+    % Row 2
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/classifier_experiment_3/plots/confusion_matrix.png}
+        \caption{Semi-Supervised 2}
+    \end{subfigure}%
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/tiny_ml_classifier_experiment_3/plots/confusion_matrix.png}
+        \caption{Quantized 2}
+    \end{subfigure}
+
+    \medskip
+
+    % Row 3
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/classifier_experiment_4/plots/confusion_matrix.png}
+        \caption{Semi-Supervised 3}
+    \end{subfigure}%
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/tiny_ml_classifier_experiment_4/plots/confusion_matrix.png}
+        \caption{Quantized 3}
+    \end{subfigure}
+
+    \caption{Confusion matrices comparing semi-supervised and quantized TinyML classifiers.}
+    \label{fig:confusion_matrices}
+\end{figure}
+
+\begin{figure}[t]
+    \ContinuedFloat
+    \centering
+
+    % Row 4
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/classifier_experiment_5/plots/confusion_matrix.png}
+        \caption{Semi-Supervised 4}
+    \end{subfigure}%
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/tiny_ml_classifier_experiment_5/plots/confusion_matrix.png}
+        \caption{Quantized 4}
+    \end{subfigure}
+
+    \medskip
+
+    % Row 5 (FIXED PATH)
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/classifier_experiment_6/plots/confusion_matrix.png}
+        \caption{Semi-Supervised 5}
+    \end{subfigure}%
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/tiny_ml_classifier_experiment_6/plots/confusion_matrix.png}
+        \caption{Quantized 5}
+    \end{subfigure}
+
+    \caption{(continued)}
+\end{figure}
+\begin{figure}[t]
+    \centering
+
+    % Row 1 — Exp. 12
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/classifier_experiment_12/plots/confusion_matrix.png}
+        \caption{Supervised 6}
+    \end{subfigure}%
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/tiny_ml_classifier_experiment_12/plots/confusion_matrix.png}
+        \caption{Quantized 6}
+    \end{subfigure}
+
+    \medskip
+
+    % Row 2 — Exp. 13
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/classifier_experiment_13/plots/confusion_matrix.png}
+        \caption{Supervised 7}
+    \end{subfigure}%
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/tiny_ml_classifier_experiment_13/plots/confusion_matrix.png}
+        \caption{Quantized 7}
+    \end{subfigure}
+
+    \medskip
+
+    % Row 3 — Exp. 14
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/classifier_experiment_14/plots/confusion_matrix.png}
+        \caption{Supervised 8}
+    \end{subfigure}%
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/tiny_ml_classifier_experiment_14/plots/confusion_matrix.png}
+        \caption{Quantized 8}
+    \end{subfigure}
+
+    \caption{Confusion matrices comparing supervised and quantized TinyML classifiers (Experiments 6 - 8).}
+    \label{fig:confusion_matrices_6_8}
+\end{figure}
 
 
+\begin{figure}[t]
+    \ContinuedFloat
+    \centering
+
+    % Row 4 — Exp. 15
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/classifier_experiment_15/plots/confusion_matrix.png}
+        \caption{Supervised 9}
+    \end{subfigure}%
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/tiny_ml_classifier_experiment_15/plots/confusion_matrix.png}
+        \caption{Quantized 9}
+    \end{subfigure}
+
+    \medskip
+
+    % Row 5 — Exp. 16
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/classifier_experiment_16/plots/confusion_matrix.png}
+        \caption{Supervised 10}
+    \end{subfigure}%
+    \begin{subfigure}{0.5\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{C:/Users/hansa/Kod/Tiny ML Aurora Detector/experiments/tiny_ml_classifier_experiment_16/plots/confusion_matrix.png}
+        \caption{Quantized 10}
+    \end{subfigure}
+
+    \caption{(continued) Confusion matrices comparing supervised and quantized TinyML classifiers (Experiments 9 - 10 ).}
+    \label{fig:confusion_matrices_15_16}
+\end{figure}
+
+
+
+\begin{table}[t]
+	\centering
+	\caption{Performance and resource usage for supervised and semi-supervised models before and after quantization. Note that the estimated energy consumption is based on continuous inference over a month given an event detection every 15 seconds.}
+	\label{tab:quantized_results}
+
+	\resizebox{\textwidth}{!}{%
+	\begin{tabular}{lcccccccccc}
+	\toprule
+	 & \multicolumn{4}{c}{\textbf{Unquantized model}} & \multicolumn{6}{c}{\textbf{Quantized model}} \\
+	\cmidrule(lr){2-5} \cmidrule(lr){6-11}
+	\textbf{Model} &
+	F1 &
+	TPR@FPR &
+	MACs &
+	Params &
+	F1 &
+	TPR@FPR &
+	Flash [B] &
+	RAM [B] &
+	Time (\,$\mu$s) &
+	mAh / month \\
+	\midrule
+	Semi-Supervised 1 & 0.17 & 0.06 & 1\,800 & 1\,000 & 0.21 & \textbf{0.12}& 6\,500 & 1\,300 & 13.00 & 21 \\
+	Semi-Supervised 2 & 0.22 & \textbf{0.13} & 6\,100 & 3\,200 & 0.17 & 0.10 & 10\,500 & 3\,900 & 47.00 & 73 \\
+	Semi-Supervised 3 & 0.20 & 0.12 & 22\,400 & 11\,600 & 0.10 & 0.05 & 22\,400 & 12\,900 & 172.00 & 268 \\
+	Semi-Supervised 4 & \textbf{0.24} & \textbf{0.13} & 85\,700 & 43\,700 & 0.07 & 0.04 & 61\,600 & 46\,300 & 659.00 & 1\,026 \\
+	Semi-Supervised 5 & 0.23 & \textbf{0.13}  & 335\,300 & 169\,300 & 0.12 & 0.05 & 201\,400 & 174\,400 & 2\,579.00 & 4\,011 \\
+	\midrule
+	Supervised 6 & 0.20 & 0.07 & 1\,800 & 1\,000 & 0.17 & 0.11 & 6\,500 & 1\,300 & 13.00 & 21 \\
+	Supervised 7 & 0.20 & 0.04 & 6\,100 & 3\,200 & 0.20 & 0.11 & 10\,500 & 3\,900 & 47.00 & 73 \\
+	Supervised 8 & 0.18 & 0.06 & 22\,400 & 11\,600 & 0.14 & 0.09 & 22\,400 & 12\,900 & 172.00 & 268 \\
+	Supervised 9 & 0.17 & 0.07 & 85\,700 & 43\,700 & 0.15 & 0.09 & 61\,600 & 46\,300 & 659.00 & 1\,026 \\
+	Supervised 10 & \textbf{0.24} & 0.06 & 335\,300 & 169\,300 & 0.17 & 0.11 & 201\,400 & 174\,400 & 2\,579.00 & 4\,011 \\
+	\bottomrule
+	\end{tabular}%
+	}
+\end{table}
+
+\section{Conclusion}
+
+This study examined the application of deep learning models to an affordable aurora detector. The goal was to improve aurora event detection while minimizing false positives. Two training paradigms—semi-supervised and supervised learning—were investigated, both utilizing a straightforward fully connected neural network architecture. \par
+
+The results indicate that both methods yield comparable performance, with the highest F1-score of 0.24 achieved by both the Semi-Supervised 4 and Supervised 10 models. However, quantization generally resulted in decreased performance across all models in terms of F1-score with a drop between 0.05 to 0.17, except for the quantized version of Semi-Supervised 1, which slightly outperformed its unquantized counterpart. Regarding the true positive rate (TPR) at a false positive rate (FPR) below $10^{-4}$, the best performance (0.13) was observed for Semi-Supervised 2, 4, and 5. For semi-supervised models, TPR at FPR < $10^{-4}$ decreased after quantization in all cases except Semi-Supervised 1. In contrast, supervised models showed increased TPR at FPR < $10^{-4}$ after quantization, possibly due to differences in how the weights are updated during training.\par
+
+It is challenging to draw definitive conclusions regarding the superiority of either training approach due to the limited size and structure of the labeled dataset. The labeling strategy was based on a small set of calendar dates (approximately ten) during which aurora activity was known to occur, with time windows of approximately 4-6 hours per date. Within these windows, the detector produced a large number of events, the majority of which did not correspond to aurora, resulting in substantially more labeled non-aurora events than aurora events, despite the dates being aurora-positive. In addition, several dates (three to five) corresponding to false alerts from the existing algorithm were included and labeled entirely as non-aurora. Consequently, the labeled dataset exhibited a strong class imbalance. Although class weighting was applied during training, it may not have been sufficient to fully compensate for this imbalance. 
+
+Furthermore, the labeled dataset comprised approximately 1,000 aurora events and 13,000 non-aurora events. This resulted in a significant class imbalance. Although classification weighting was implemented, it may not have been sufficient to fully compensate for this imbalance. \par
+
+With respect to model deployment on the Raspberry Pi Pico W, all quantized models were found to fit comfortably within the microcontroller's flash memory and RAM constraints. The estimated energy consumption for inference was also determined to be manageable, even for the largest model considered. \par
+
+In conclusion, this study demonstrates that deep learning models can be deployed on an affordable aurora detector. However, performance does not yet surpass the existing algorithm. Future work could explore more sophisticated model architectures, expand and diversify the labeled dataset, and further optimize models for resource-constrained hardware.
 
 \printbibliography
 
